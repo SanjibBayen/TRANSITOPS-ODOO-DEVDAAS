@@ -4,19 +4,12 @@ import { Request, Response, NextFunction } from 'express';
 // SECURITY HEADERS
 // ============================================
 export const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-  // Prevent MIME type sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
-
-  // Prevent clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-
-  // Enable XSS filter
   res.setHeader('X-XSS-Protection', '1; mode=block');
-
-  // Referrer policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Powered-By', 'TransitOps');
 
-  // Content Security Policy
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
@@ -27,18 +20,10 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
     "connect-src 'self' https://*.supabase.co wss://*.supabase.co;"
   );
 
-  // Hide Express
-  res.setHeader('X-Powered-By', 'TransitOps');
-
-  // Strict Transport Security (HSTS)
   if (process.env.NODE_ENV === 'production') {
-    res.setHeader(
-      'Strict-Transport-Security',
-      'max-age=31536000; includeSubDomains; preload'
-    );
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
 
-  // Cache control for API
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -94,13 +79,13 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction) =
   const sanitize = (obj: any): any => {
     if (typeof obj === 'string') {
       return obj
-        .replace(/[<>]/g, '')           // Remove HTML tags
-        .replace(/javascript:/gi, '')   // Remove javascript: protocol
-        .replace(/on\w+\s*=/gi, '')     // Remove event handlers
-        .replace(/&#/g, '')             // Remove encoded characters
-        .replace(/&lt;/g, '')           // Remove encoded <
-        .replace(/&gt;/g, '')           // Remove encoded >
-        .replace(/&amp;/g, '&')         // Decode &
+        .replace(/[<>]/g, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .replace(/&#/g, '')
+        .replace(/&lt;/g, '')
+        .replace(/&gt;/g, '')
+        .replace(/&amp;/g, '&')
         .trim();
     }
     if (Array.isArray(obj)) {
@@ -138,16 +123,39 @@ export const requestId = (req: Request, res: Response, next: NextFunction) => {
 // ============================================
 export const responseTime = (req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
-  
-  res.on('finish', () => {
+
+  const originalJson = res.json.bind(res);
+  const originalSend = res.send.bind(res);
+  const originalEnd = res.end.bind(res);
+
+  const setResponseTime = () => {
     const duration = Date.now() - start;
-    res.setHeader('X-Response-Time', `${duration}ms`);
-    
-    // Log slow requests
-    if (duration > 1000) {
-      console.warn(`⚠️  Slow request: ${req.method} ${req.originalUrl} - ${duration}ms`);
+    if (!res.headersSent) {
+      try {
+        res.setHeader('X-Response-Time', `${duration}ms`);
+      } catch (error) {
+        // Header already sent, ignore
+      }
     }
-  });
+    if (duration > 1000) {
+      console.warn(`Slow request: ${req.method} ${req.originalUrl} - ${duration}ms`);
+    }
+  };
+
+  res.json = function (body: any) {
+    setResponseTime();
+    return originalJson(body);
+  };
+
+  res.send = function (body: any) {
+    setResponseTime();
+    return originalSend(body);
+  };
+
+  res.end = function (...args: any[]) {
+    setResponseTime();
+    return originalEnd(...args);
+  };
 
   next();
 };
@@ -158,14 +166,14 @@ export const responseTime = (req: Request, res: Response, next: NextFunction) =>
 export const bodySizeLimiter = (maxSize: number = 10 * 1024 * 1024) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const contentLength = parseInt(req.headers['content-length'] || '0');
-    
+
     if (contentLength > maxSize) {
       return res.status(413).json({
         success: false,
         message: `Request body too large. Maximum ${maxSize / 1024 / 1024}MB allowed`,
       });
     }
-    
+
     next();
   };
 };
