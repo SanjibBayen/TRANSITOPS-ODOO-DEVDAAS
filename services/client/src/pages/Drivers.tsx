@@ -113,7 +113,7 @@ export const Drivers: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-[#1b1c1c] dark:text-zinc-100 tracking-tight">
-            Pilots & Drivers Registry
+            Drivers Registry
           </h1>
           <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400">
             Active commercial licensing credentials, biometric logs, and trip compliance indices.
@@ -134,7 +134,7 @@ export const Drivers: React.FC = () => {
         <div className="rounded-xl bg-white dark:bg-zinc-900 p-4.5 border border-gray-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
           <div>
             <span className="block text-[10px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-              Total Active Pilots
+              Total Active Drivers
             </span>
             <span className="text-2xl font-black text-[#1b1c1c] dark:text-zinc-100 block mt-1">
               {metrics.totalDrivers} Drivers
@@ -155,7 +155,7 @@ export const Drivers: React.FC = () => {
               Available for Dispatch
             </span>
             <span className="text-2xl font-black text-[#829c62] block mt-1">
-              {metrics.availableDriversCount} Pilots
+              {metrics.availableDriversCount} Drivers
             </span>
             <span className="text-[10px] text-[#829c62] font-semibold mt-1 block">
               Ready for immediate route
