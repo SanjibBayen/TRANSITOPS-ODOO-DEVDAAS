@@ -44,7 +44,7 @@ export class EmailService {
       await resend.emails.send({
         from: this.FROM_EMAIL,
         to: email,
-        subject: `⚠️ License Expiring in ${daysLeft} Days - ${driverName}`,
+        subject: `License Expiring in ${daysLeft} Days - ${driverName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <div style="background: ${daysLeft <= 7 ? '#dc2626' : '#f59e0b'}; padding: 20px; border-radius: 8px 8px 0 0;">
@@ -80,7 +80,7 @@ export class EmailService {
       await resend.emails.send({
         from: this.FROM_EMAIL,
         to: email,
-        subject: '🚛 New Trip Assigned',
+        subject: 'New Trip Assigned',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: #2563eb;">Trip Dispatched!</h1>
@@ -144,10 +144,10 @@ export class EmailService {
       await resend.emails.send({
         from: this.FROM_EMAIL,
         to: email,
-        subject: `📊 ${reportName} - TransitOps Report`,
+        subject: ` ${reportName} - TransitOps Report`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>📊 ${reportName}</h2>
+            <h2> ${reportName}</h2>
             <p>Your requested report is ready.</p>
             <p><strong>Format:</strong> ${format.toUpperCase()}</p>
             <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>

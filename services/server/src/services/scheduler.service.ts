@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { EmailService } from '../config/email';
 import { NotificationService } from './notification.service';
 
+
 export class SchedulerService {
   // Check for expiring licenses
   static async checkExpiringLicenses(): Promise<void> {

@@ -1,53 +1,9 @@
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
   api_key: process.env.CLOUDINARY_API_KEY || '',
   api_secret: process.env.CLOUDINARY_API_SECRET || '',
-});
-
-// Storage for documents
-export const documentStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'] as any,
-    resource_type: 'auto' as any,
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }] as any,
-    public_id: (_req: any, _file: any) => {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 8);
-      return `transitops/documents/${timestamp}_${random}`;
-    },
-  } as any,
-});
-
-// Storage for vehicle images
-export const vehicleImageStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] as any,
-    transformation: [
-      { width: 800, height: 600, crop: 'fill', quality: 'auto' },
-    ] as any,
-    public_id: (_req: any, _file: any) => {
-      const timestamp = Date.now();
-      return `transitops/vehicles/${timestamp}`;
-    },
-  } as any,
-});
-
-// Storage for receipts
-export const receiptStorage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'] as any,
-    resource_type: 'auto' as any,
-    public_id: (_req: any, _file: any) => {
-      const timestamp = Date.now();
-      return `transitops/receipts/${timestamp}`;
-    },
-  } as any,
 });
 
 export class CloudinaryService {
