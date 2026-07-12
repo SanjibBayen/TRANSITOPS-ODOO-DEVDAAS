@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth.ts';
-import { Search, Bell, Grid, Menu, LogOut, User, Edit2, X, Check } from 'lucide-react';
+import { Search, Bell, Grid, Menu, LogOut, User, Edit2, X, Check, Sun, Moon } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, setSearchQuery } from '../../store/slices/uiSlice.ts';
 import { RootState } from '../../store/index.ts';
@@ -57,12 +57,12 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-[#5e3b56] dark:border-zinc-800 bg-[#714B67] dark:bg-zinc-950 px-4 text-white shadow-sm font-sans">
+      <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 shadow-sm font-sans">
         {/* Left side: Brand + Collapse toggle */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => dispatch(toggleSidebar())}
-            className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-[#5e3b56] transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors"
             id="sidebar-toggle-btn"
             aria-label="Toggle Sidebar"
           >
@@ -70,10 +70,10 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
           </button>
           
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-white to-[#f5f3f3] bg-clip-text text-transparent">
+            <span className="text-lg font-bold tracking-tight text-[#714B67] dark:text-zinc-100">
               TransitOps
             </span>
-            <span className="flex items-center gap-1.5 rounded bg-emerald-800 px-2 py-0.5 text-[9px] font-bold tracking-wider text-emerald-200 border border-emerald-600">
+            <span className="flex items-center gap-1.5 rounded bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/50">
               LIVE
             </span>
           </div>
@@ -82,67 +82,37 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
         {/* Middle: Professional Search box with cmd shortcut */}
         <div className="hidden md:flex relative max-w-md w-full mx-4">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-            <Search className="h-4 w-4 text-white/70" />
+            <Search className="h-4 w-4 text-gray-400" />
           </div>
           <input
             type="text"
             value={searchQuery}
             onChange={handleSearchChange}
             placeholder="Search records, drivers, trips..."
-            className="block w-full rounded border border-white/20 bg-white dark:bg-zinc-900/10 py-1 pl-9 pr-12 text-sm text-white placeholder-white/60 dark:placeholder-zinc-400 focus:border-white focus:bg-white dark:focus:bg-zinc-900 dark:bg-zinc-900 focus:text-[#1b1c1c] dark:text-zinc-100 focus:outline-none focus:placeholder-gray-400 dark:placeholder-zinc-500 transition-all font-medium"
+            className="block w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-1.5 pl-9 pr-12 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:border-[#714B67] dark:focus:border-zinc-600 focus:ring-1 focus:ring-[#714B67] dark:focus:ring-zinc-600 focus:outline-none transition-all shadow-sm"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-            <kbd className="inline-flex items-center rounded border border-white/20 px-1.5 font-mono text-[9px] font-medium text-white/60">
+            <kbd className="inline-flex items-center rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-1.5 font-mono text-[10px] font-medium text-gray-400 dark:text-zinc-500">
               ⌘K
             </kbd>
           </div>
         </div>
 
         {/* Right side: Actions, Notifications and Profile */}
-        <div className="flex items-center gap-3">
-          {/* Theme Switcher Toggle (TASK 6) */}
-          <div className="flex items-center bg-white dark:bg-zinc-900/10 dark:bg-black/30 rounded p-0.5 border border-white/10 mr-1.5 shadow-inner">
-            <button
-              onClick={() => setTheme('light')}
-              className={`px-2 py-1 text-[10px] font-extrabold rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                theme === 'light'
-                  ? 'bg-white dark:bg-zinc-900 text-[#714B67] shadow-xs scale-102'
-                  : 'text-white/80 hover:text-white hover:bg-white dark:bg-zinc-900/5'
-              }`}
-              title="Light Theme"
-            >
-              <span>🌞</span>
-              <span className="hidden sm:inline">Light</span>
-            </button>
-            <button
-              onClick={() => setTheme('dark')}
-              className={`px-2 py-1 text-[10px] font-extrabold rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                theme === 'dark'
-                  ? 'bg-gray-800 text-white shadow-xs border border-gray-700/50'
-                  : 'text-white/80 hover:text-white hover:bg-white dark:bg-zinc-900/5'
-              }`}
-              title="Dark Theme"
-            >
-              <span>🌙</span>
-              <span className="hidden sm:inline">Dark</span>
-            </button>
-          </div>
-
-          {/* Notifications Icon with static count */}
-          <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-[#5e3b56] hover:text-white transition-all">
-            <Bell className="h-4.5 w-4.5" />
-            <span className="absolute top-1 right-1 h-3.5 w-3.5 rounded-full bg-red-500 text-[8px] font-bold flex items-center justify-center text-white">
-              3
-            </span>
-          </button>
-
+        <div className="flex items-center gap-2">
           {/* Dashboard Grid Icons */}
-          <button className="hidden sm:flex h-9 w-9 items-center justify-center rounded-lg text-white/80 hover:bg-[#5e3b56] hover:text-white transition-all">
+          <button className="hidden sm:flex h-9 w-9 items-center justify-center rounded text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors">
             <Grid className="h-4.5 w-4.5" />
           </button>
 
+          {/* Notifications Icon with static count */}
+          <button className="relative flex h-9 w-9 items-center justify-center rounded text-gray-500 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-zinc-100 transition-colors">
+            <Bell className="h-4.5 w-4.5" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border-2 border-white dark:border-zinc-900"></span>
+          </button>
+
           {/* Divider */}
-          <div className="h-6 w-px bg-white dark:bg-zinc-900/20" />
+          <div className="h-5 w-px bg-gray-200 dark:bg-zinc-800 mx-1" />
 
           {/* Profile Card & Log out click dropdown */}
           {user && (
@@ -152,13 +122,13 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                 className="flex items-center gap-2 pl-1 group outline-none focus:outline-none"
               >
                 <div className="hidden lg:flex flex-col text-right">
-                  <span className="text-xs font-bold leading-none text-white">{user.name}</span>
-                  <span className="text-[9px] text-white/70 mt-0.5 capitalize font-medium">{user.role}</span>
+                  <span className="text-xs font-bold leading-none text-gray-900 dark:text-zinc-100">{user.name}</span>
+                  <span className="text-[9px] text-gray-500 dark:text-zinc-400 mt-0.5 capitalize font-medium">{user.role}</span>
                 </div>
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="h-8 w-8 rounded-full border border-white/20 object-cover group-hover:border-white transition-all shadow-sm"
+                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-zinc-700 object-cover group-hover:border-gray-300 dark:group-hover:border-zinc-500 transition-all shadow-sm"
                 />
               </button>
 
@@ -180,18 +150,32 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                   
                   <button
                     onClick={openEditModal}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-[#714B67]/5 hover:text-[#714B67] rounded transition-colors w-full"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded transition-colors"
                   >
                     <User className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
-                    My Profile / Edit
+                    My Profile
                   </button>
 
                   <button
+                    onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded transition-colors"
+                  >
+                    {theme === 'light' ? (
+                      <Moon className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
+                    ) : (
+                      <Sun className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
+                    )}
+                    {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+                  </button>
+
+                  <div className="h-px bg-gray-100 dark:bg-zinc-800 my-1" />
+
+                  <button
                     onClick={onLogout}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 rounded transition-colors w-full"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded transition-colors"
                   >
                     <LogOut className="h-4 w-4" />
-                    Logout Session
+                    Logout
                   </button>
                 </div>
               )}

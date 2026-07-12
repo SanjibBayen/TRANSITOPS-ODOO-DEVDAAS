@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { addToast } from '../store/slices/uiSlice.ts';
 import { Download, Calendar, Filter, Database, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
+import { RootState } from '../store/index.ts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export const Export: React.FC = () => {
   const dispatch = useDispatch();
 
+  const expenses = useSelector((state: RootState) => state.expenses.expenses);
+  const trips = useSelector((state: RootState) => state.trips.trips);
+  
   const [dateRange, setDateRange] = useState('This Month');
   const [exportTarget, setExportTarget] = useState('All Expenses');
   const [exportFormat, setExportFormat] = useState('CSV');
@@ -17,8 +23,77 @@ export const Export: React.FC = () => {
   const handleExport = () => {
     setIsExporting(true);
 
-    // Simulate exporting delay
     setTimeout(() => {
+      let data: any[] = [];
+      let columns: string[] = [];
+      let filename = `${exportTarget.replace(/ /g, '_')}_${dateRange.replace(/ /g, '_')}`;
+
+      if (exportTarget === 'Active Trips Records') {
+        columns = ['Trip ID', 'Vehicle', 'Driver', 'Status', 'Start Time', 'Route'];
+        data = trips.filter(t => t.status !== 'Completed' && t.status !== 'Draft').map(t => [
+          t.id, t.vehicleName, t.driverName, t.status, new Date(t.startTime).toLocaleDateString(), `${t.source} -> ${t.destination}`
+        ]);
+      } else {
+        // Expenses logic
+        let filteredExpenses = expenses;
+        if (exportTarget === 'Fuel Records Only') {
+          filteredExpenses = expenses.filter(e => e.type === 'Fuel');
+        } else if (exportTarget === 'Toll Logs Only') {
+          filteredExpenses = expenses.filter(e => e.type === 'Toll');
+        } else if (exportTarget === 'Maintenance Ledger Only') {
+          filteredExpenses = expenses.filter(e => e.type === 'Maintenance');
+        }
+
+        columns = ['Date', 'Type', 'Amount', 'Vehicle/Trip', 'Description'];
+        data = filteredExpenses.map(e => [
+          e.date,
+          e.type,
+          `$${e.amount.toFixed(2)}`,
+          e.vehicleId || e.tripId || 'N/A',
+          e.description || 'N/A'
+        ]);
+      }
+
+      if (exportFormat === 'PDF') {
+        const doc = new jsPDF();
+        doc.setFontSize(18);
+        doc.text(`TransitOps - ${exportTarget}`, 14, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Period: ${dateRange}`, 14, 30);
+        
+        autoTable(doc, {
+          startY: 36,
+          head: [columns],
+          body: data,
+        });
+        
+        doc.save(`${filename}.pdf`);
+      } else if (exportFormat === 'CSV') {
+        const csvContent = [
+          columns.join(','),
+          ...data.map(row => row.map((cell: any) => `"${cell}"`).join(','))
+        ].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `${filename}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // Fallback for XLSX simulation
+        dispatch(addToast({
+          type: 'error',
+          title: 'Format Not Supported',
+          message: `XLSX export requires an additional library.`
+        }));
+        setIsExporting(false);
+        return;
+      }
+
       setIsExporting(false);
       dispatch(addToast({
         type: 'success',

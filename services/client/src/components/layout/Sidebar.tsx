@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../store/index.ts';
-import { setActiveTab } from '../../store/slices/uiSlice.ts';
+import { setActiveTab, toggleSidebar, setSidebarCollapsed } from '../../store/slices/uiSlice.ts';
 import { 
   LayoutDashboard, 
   Truck, 
@@ -26,6 +26,12 @@ export const Sidebar: React.FC = () => {
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
 
   const role = user?.role || 'Manager';
+
+  useEffect(() => {
+    if (window.innerWidth < 640) {
+      dispatch(setSidebarCollapsed(true));
+    }
+  }, [dispatch]);
 
   // Cycle alerts every 6 seconds in the ticker
   useEffect(() => {
@@ -82,11 +88,19 @@ export const Sidebar: React.FC = () => {
   ] as const;
 
   return (
-    <aside 
-      className={`relative flex flex-col border-r border-gray-200 bg-[#f5f3f3] dark:bg-zinc-950 text-[#4d4847] dark:text-zinc-300 transition-all duration-300 ease-in-out ${
-        sidebarCollapsed ? 'w-16' : 'w-64'
-      }`}
-    >
+    <>
+      {/* Mobile Overlay */}
+      {!sidebarCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-20 sm:hidden" 
+          onClick={() => dispatch(toggleSidebar())}
+        />
+      )}
+      <aside 
+        className={`absolute sm:relative z-30 flex flex-col h-full border-r border-gray-200 bg-[#f5f3f3] dark:bg-zinc-950 text-[#4d4847] dark:text-zinc-300 transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? '-translate-x-full sm:translate-x-0 sm:w-16' : 'translate-x-0 w-64'
+        }`}
+      >
       {/* Fleet Profile / Subtitle Header block */}
       {!sidebarCollapsed && (
         <div className="flex flex-col border-b border-gray-200 dark:border-zinc-800 px-4 py-4.5 bg-gray-50 dark:bg-zinc-900/50">
@@ -128,82 +142,77 @@ export const Sidebar: React.FC = () => {
       )}
 
       {/* Main Navigation Items */}
-      <nav className="flex-1 space-y-1.5 px-2 py-4 overflow-y-auto no-scrollbar">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto no-scrollbar">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => dispatch(setActiveTab(item.id as any))}
-              className={`flex w-full items-center gap-3 rounded px-3 py-2.5 text-xs font-bold tracking-wide transition-all relative ${
+              onClick={() => {
+                dispatch(setActiveTab(item.id as any));
+                if (window.innerWidth < 640 && !sidebarCollapsed) {
+                  dispatch(toggleSidebar());
+                }
+              }}
+              className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors relative ${
                 isActive 
-                  ? 'bg-white dark:bg-zinc-900 text-[#1b1c1c] dark:text-zinc-100 shadow-xs font-extrabold' 
-                  : 'text-[#5d5856] dark:text-zinc-400 hover:bg-[#eae8e7] dark:hover:bg-zinc-800 hover:text-[#1b1c1c] dark:text-zinc-400 dark:hover:text-white'
+                  ? 'bg-white dark:bg-zinc-800 text-[#714B67] dark:text-[#c48cb5] shadow-sm' 
+                  : 'text-gray-600 dark:text-zinc-400 hover:bg-white/50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              {/* Left active line accent */}
-              {isActive && (
-                <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-md bg-[#714B67]" />
-              )}
-              <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-[#714B67]' : 'text-gray-500 dark:text-zinc-400'}`} />
+              <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-[#714B67] dark:text-[#c48cb5]' : 'text-gray-500'}`} />
               {!sidebarCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
-      </nav>
-
-      {/* Bottom links: Settings & Support */}
-      <div className="space-y-1 px-2 py-3 border-t border-gray-200 dark:border-zinc-800">
+        
+        {/* Separator */}
+        <div className="my-4 border-t border-gray-200 dark:border-zinc-800" />
+        
+        {/* Bottom links: Settings & Support */}
         {bottomItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
-              onClick={() => dispatch(setActiveTab(item.id))}
-              className={`flex w-full items-center gap-3 rounded px-3 py-2 text-xs font-semibold transition-all ${
+              onClick={() => {
+                dispatch(setActiveTab(item.id as any));
+                if (window.innerWidth < 640 && !sidebarCollapsed) {
+                  dispatch(toggleSidebar());
+                }
+              }}
+              className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                 isActive 
-                  ? 'bg-white dark:bg-zinc-900 text-[#1b1c1c] dark:text-zinc-100 shadow-xs font-extrabold' 
-                  : 'text-gray-500 dark:text-zinc-400 hover:bg-[#eae8e7] dark:hover:bg-zinc-800 hover:text-[#1b1c1c] dark:text-zinc-400 dark:hover:text-white'
+                  ? 'bg-white dark:bg-zinc-800 text-[#714B67] dark:text-[#c48cb5] shadow-sm' 
+                  : 'text-gray-600 dark:text-zinc-400 hover:bg-white/50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className="h-4.5 w-4.5 shrink-0 text-gray-500" />
               {!sidebarCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* Sticky Bottom System Alert Banner & pulsate status */}
-      <div className="border-t border-gray-200 bg-[#eae8e7] dark:bg-zinc-950 p-2.5 flex flex-col justify-center">
-        <div className="flex items-center gap-2">
-          {/* Pulsating green dot */}
-          <div className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#10b981]"></span>
-          </div>
-          {!sidebarCollapsed ? (
-            <span className="text-[9px] font-extrabold text-[#006a68] dark:text-[#34d399] tracking-widest uppercase flex items-center gap-1">
-              SYSTEM ONLINE
-            </span>
-          ) : (
-            <span className="text-[8px] font-black text-[#006a68] dark:text-[#34d399] uppercase">SYS</span>
+      {alerts.length > 0 && (
+        <div className="border-t border-gray-200 bg-[#eae8e7] dark:bg-zinc-950 p-2.5 flex flex-col justify-center">
+          {/* Ticker of alerts (visible when expanded) */}
+          {!sidebarCollapsed && (
+            <div className="mt-1 h-6 overflow-hidden rounded bg-white dark:bg-zinc-900 px-2 py-1 text-[9px] border border-[#d1c3ca] dark:border-zinc-800 flex items-center text-[#5d5856] dark:text-zinc-400 shadow-sm">
+              <div className="truncate w-full font-medium select-none animate-fade-in">
+                <span className="font-bold text-[#b45309] dark:text-amber-500 mr-1.5">
+                  [{alerts[currentAlertIndex]?.type}]
+                </span>
+                {alerts[currentAlertIndex]?.message}
+              </div>
+            </div>
           )}
         </div>
-        
-        {/* Ticker of alerts (visible when expanded) */}
-        {!sidebarCollapsed && alerts.length > 0 && (
-          <div className="mt-1.5 h-6 overflow-hidden rounded bg-white dark:bg-zinc-900 px-2 py-1 text-[9px] border border-[#d1c3ca] dark:border-zinc-800 flex items-center text-[#5d5856] dark:text-zinc-400">
-            <div className="truncate w-full font-medium select-none animate-fade-in">
-              <span className="font-extrabold text-[#b45309] dark:text-amber-400 mr-1">
-                [{alerts[currentAlertIndex]?.type}]
-              </span>
-              {alerts[currentAlertIndex]?.message}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </aside>
+    </>
   );
 };

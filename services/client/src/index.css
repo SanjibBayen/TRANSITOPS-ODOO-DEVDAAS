@@ -5,13 +5,13 @@
 @layer base {
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #fbf9f8;
-    color: #1b1c1c;
+    background-color: #f3f4f6; /* Cleaner grey for professional UI */
+    color: #111827; /* Darker more professional text */
     @apply transition-colors duration-300;
   }
 
   .dark body {
-    background-color: #111212;
+    background-color: #111827;
     color: #f3f4f6;
   }
 }

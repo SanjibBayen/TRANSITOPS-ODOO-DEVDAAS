@@ -4,16 +4,21 @@ import { setActiveTab } from '../store/slices/uiSlice.ts';
 import { loginSuccess } from '../store/slices/authSlice.ts';
 import api from '../lib/axios.ts';
 import { toast } from 'sonner';
-import { ShieldAlert, LogIn, Lock, Mail, Users, Truck, ShieldCheck, Landmark } from 'lucide-react';
+import { ShieldAlert, LogIn, Lock, Mail, Users, Truck, ShieldCheck, Landmark, UserPlus, Upload } from 'lucide-react';
 
 type UserRole = 'Manager' | 'Driver' | 'Safety Officer' | 'Financial Analyst';
 
 export const Login: React.FC = () => {
   const dispatch = useDispatch();
   
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [selectedRole, setSelectedRole] = useState<UserRole>('Manager');
+  
+  // Form fields
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('admin@transitops.in');
   const [password, setPassword] = useState('••••••••••••');
+  
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,15 +55,36 @@ export const Login: React.FC = () => {
 
   const selectRole = (role: UserRole) => {
     setSelectedRole(role);
-    setEmail(roleConfigs[role].email);
-    setPassword('••••••••••••');
+    setEmail(isLoginMode ? roleConfigs[role].email : '');
+    setPassword(isLoginMode ? '••••••••••••' : '');
     setFormError(null);
   };
 
-  const handleLogin = async (emailToLogin: string, passwordToLogin: string) => {
+  const handleToggleMode = () => {
+    setIsLoginMode(!isLoginMode);
+    setFormError(null);
+    if (!isLoginMode) {
+      // Switching to login
+      setEmail(roleConfigs[selectedRole].email);
+      setPassword('••••••••••••');
+    } else {
+      // Switching to signup
+      setEmail('');
+      setPassword('');
+      setName('');
+    }
+  };
+
+  const handleAuth = async () => {
     try {
       setIsLoading(true);
-      const response = await api.post('/auth/login', { email: emailToLogin, password: passwordToLogin });
+      let response;
+      if (isLoginMode) {
+        response = await api.post('/auth/login', { email, password });
+      } else {
+        response = await api.post('/auth/signup', { email, password, name, role: selectedRole });
+      }
+
       const { access_token, refresh_token } = response.data.data.session;
       const { user } = response.data.data;
       
@@ -73,18 +99,18 @@ export const Login: React.FC = () => {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: user.role || selectedRole,
           avatar: user.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDYBkw3LHcTwmizgJ3i8YKR18fYqElE3Mg9j2KIiAk20JcN3_h5fi77C0J2BvviOW_QR2oyHcQ1XeYxnzmkweobMewYAuRyAzEJWCwz1f8yi2isPQCNymxtX7N0ODA2q72p8krMwTYMqNCrLU0kY2W6SZhU8o4L_fBJxZlYDMT_ZRzWlderTFed7dQY7vdEiknxiWpdbu7Khs7Et6zBYfdMI_lfWSWZaqHVYJvvx84zfuptWyJN5g9-'
         },
         scope: config.scope
       }));
       
-      toast.success('Logged in successfully');
+      toast.success(isLoginMode ? 'Logged in successfully' : 'Account created successfully');
       
       // Redirect driver directly to dashboard/my trips
       dispatch(setActiveTab('dashboard'));
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Login failed';
+      const errorMsg = error.response?.data?.message || (isLoginMode ? 'Login failed' : 'Registration failed');
       setFormError(errorMsg);
       toast.error(errorMsg);
     } finally {
@@ -94,12 +120,12 @@ export const Login: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setFormError('Please enter both your email address and password.');
+    if (!email || !password || (!isLoginMode && !name)) {
+      setFormError('Please fill in all required fields.');
       return;
     }
     setFormError(null);
-    handleLogin(email, password);
+    handleAuth();
   };
 
   return (
@@ -167,6 +193,28 @@ export const Login: React.FC = () => {
         {/* Form */}
         <form className="space-y-4" onSubmit={handleSubmit}>
           
+          {!isLoginMode && (
+            <div>
+              <label htmlFor="name" className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                Full Name
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Users className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
+                </span>
+                <input
+                  id="name"
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="block w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-2.5 pl-9 pr-3 text-xs text-gray-800 dark:text-zinc-200 focus:border-[#714B67] focus:ring-1 focus:ring-[#714B67] focus:outline-none transition-all font-semibold"
+                  placeholder="John Doe"
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label htmlFor="email" className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
               Email Address
@@ -192,9 +240,11 @@ export const Login: React.FC = () => {
               <label htmlFor="key" className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
                 Password
               </label>
-              <a href="#" className="text-[10px] font-bold text-[#714B67] hover:underline">
-                Reset Password?
-              </a>
+              {isLoginMode && (
+                <a href="#" className="text-[10px] font-bold text-[#714B67] hover:underline">
+                  Reset Password?
+                </a>
+              )}
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -220,6 +270,13 @@ export const Login: React.FC = () => {
               />
               Keep me logged in
             </label>
+            <button
+              type="button"
+              onClick={handleToggleMode}
+              className="text-xs font-bold text-[#714B67] hover:underline"
+            >
+              {isLoginMode ? 'Create new account' : 'Already have an account?'}
+            </button>
           </div>
 
           <button
@@ -227,8 +284,8 @@ export const Login: React.FC = () => {
             disabled={isLoading}
             className="flex w-full items-center justify-center gap-2 rounded bg-[#714B67] py-2.5 text-xs font-bold text-white hover:bg-[#5e3b56] transition-colors shadow-sm cursor-pointer disabled:opacity-50 mt-2"
           >
-            <LogIn className="h-4 w-4" />
-            {isLoading ? 'Connecting...' : `Enter ${selectedRole} Portal`}
+            {isLoginMode ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+            {isLoading ? 'Connecting...' : (isLoginMode ? `Enter ${selectedRole} Portal` : 'Sign Up')}
           </button>
         </form>
 

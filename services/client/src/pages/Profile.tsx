@@ -1,10 +1,16 @@
-import React from 'react';
-import { useSelector } from 'react-redux';
+import React, { useRef, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store/index.ts';
-import { User, Shield, Phone, Mail, Award, Clock, MapPin, Truck } from 'lucide-react';
+import { updateProfile } from '../store/slices/authSlice.ts';
+import { User, Shield, Phone, Mail, Award, Clock, MapPin, Truck, Camera, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import api from '../lib/axios.ts';
 
 export const Profile: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Hardcoded profile stats for Suresh Kumar
   const driverStats = {
@@ -18,13 +24,54 @@ export const Profile: React.FC = () => {
     bloodGroup: 'O+ve'
   };
 
+  const handleAvatarClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      // Assume the backend has a /upload endpoint configured with Cloudinary
+      // Adjust this URL as needed based on your backend implementation
+      const response = await api.post('/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const avatarUrl = response.data.data?.url || response.data.url;
+      
+      // Update local state
+      dispatch(updateProfile({ avatar: avatarUrl }));
+      toast.success('Profile picture updated successfully');
+      
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload profile picture. Backend Cloudinary route may not be fully implemented.');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto animate-fade-in font-sans text-gray-800 dark:text-zinc-200">
       
       {/* Title Header */}
       <div>
         <h1 className="text-2xl font-black text-gray-900 dark:text-zinc-100 tracking-tight">
-          My Driver Profile
+          My Profile
         </h1>
         <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400">
           Access your professional fleet credentials, active vehicle assignments, and driving safety scorecard.
@@ -35,14 +82,33 @@ export const Profile: React.FC = () => {
         
         {/* Profile Card */}
         <div className="md:col-span-1 bg-white dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800 p-6 flex flex-col items-center text-center shadow-xs">
-          <img
-            src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
-            alt={user?.name}
-            className="h-24 w-24 rounded-full border-4 border-[#714B67]/20 object-cover shadow-sm mb-4"
-          />
+          <div className="relative mb-4 group cursor-pointer" onClick={handleAvatarClick}>
+            <div className={`h-24 w-24 rounded-full border-4 border-[#714B67]/20 overflow-hidden shadow-sm relative ${isUploading ? 'opacity-50' : ''}`}>
+              <img
+                src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'}
+                alt={user?.name}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera className="text-white h-6 w-6" />
+              </div>
+            </div>
+            {isUploading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 text-[#714B67] animate-spin" />
+              </div>
+            )}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
           <h2 className="text-lg font-extrabold text-gray-900 dark:text-zinc-100">{user?.name}</h2>
           <span className="mt-1 px-3 py-0.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 rounded-full text-[10px] font-black uppercase tracking-wider">
-            Active Driver
+            {user?.role}
           </span>
 
           <div className="w-full border-t border-gray-100 dark:border-zinc-800 my-5 pt-4 space-y-3.5 text-left text-xs">
@@ -54,13 +120,15 @@ export const Profile: React.FC = () => {
               <Phone className="h-4 w-4 text-gray-400 shrink-0" />
               <span className="font-semibold">+91 98765 43210</span>
             </div>
-            <div className="flex items-center gap-2.5 text-gray-600 dark:text-zinc-400">
-              <Shield className="h-4 w-4 text-gray-400 shrink-0" />
-              <div>
-                <span className="font-bold block text-gray-900 dark:text-zinc-100">DL Number</span>
-                <span className="font-mono text-[11px] font-bold text-gray-500 dark:text-zinc-400">{driverStats.licenseNo}</span>
+            {user?.role === 'Driver' && (
+              <div className="flex items-center gap-2.5 text-gray-600 dark:text-zinc-400">
+                <Shield className="h-4 w-4 text-gray-400 shrink-0" />
+                <div>
+                  <span className="font-bold block text-gray-900 dark:text-zinc-100">DL Number</span>
+                  <span className="font-mono text-[11px] font-bold text-gray-500 dark:text-zinc-400">{driverStats.licenseNo}</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 

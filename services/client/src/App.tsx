@@ -27,7 +27,7 @@ import { useWebSocket } from './hooks/useWebSocket.ts';
 
 function AppContent() {
   const dispatch = useDispatch();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const activeTab = useSelector((state: RootState) => state.ui.activeTab);
 
   useWebSocket();
@@ -42,35 +42,61 @@ function AppContent() {
 
   // Active Tab View conditional router
   const renderActiveView = () => {
+    const role = user?.role || 'Manager';
+
+    // Route guards
+    if (role === 'Driver') {
+      switch (activeTab) {
+        case 'dashboard': return <Dashboard />;
+        case 'trips': return <Dispatch />;
+        case 'profile': return <Profile />;
+        case 'settings': return <Settings />;
+        case 'support': return <Support />;
+        default: return <Dashboard />;
+      }
+    }
+
+    if (role === 'Safety Officer') {
+      switch (activeTab) {
+        case 'dashboard': return <Dashboard />;
+        case 'drivers': return <Drivers />;
+        case 'compliance': return <Compliance />;
+        case 'license-expiry': return <LicenseExpiry />;
+        case 'analytics': return <Analytics />;
+        case 'settings': return <Settings />;
+        case 'support': return <Support />;
+        default: return <Dashboard />;
+      }
+    }
+
+    if (role === 'Financial Analyst') {
+      switch (activeTab) {
+        case 'dashboard': return <Dashboard />;
+        case 'fuel': return <Fuel />;
+        case 'analytics': return <Analytics />;
+        case 'export': return <Export />;
+        case 'settings': return <Settings />;
+        case 'support': return <Support />;
+        default: return <Dashboard />;
+      }
+    }
+
+    // Default Manager
     switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'fleet':
-        return <Vehicles />;
-      case 'drivers':
-        return <Drivers />;
-      case 'trips':
-        return <Dispatch />;
-      case 'maintenance':
-        return <Maintenance />;
-      case 'fuel':
-        return <Fuel />;
-      case 'analytics':
-        return <Analytics />;
-      case 'settings':
-        return <Settings />;
-      case 'support':
-        return <Support />;
-      case 'profile':
-        return <Profile />;
-      case 'compliance':
-        return <Compliance />;
-      case 'license-expiry':
-        return <LicenseExpiry />;
-      case 'export':
-        return <Export />;
-      default:
-        return <Dashboard />;
+      case 'dashboard': return <Dashboard />;
+      case 'fleet': return <Vehicles />;
+      case 'drivers': return <Drivers />;
+      case 'trips': return <Dispatch />;
+      case 'maintenance': return <Maintenance />;
+      case 'fuel': return <Fuel />;
+      case 'analytics': return <Analytics />;
+      case 'settings': return <Settings />;
+      case 'support': return <Support />;
+      case 'profile': return <Profile />;
+      case 'compliance': return <Compliance />;
+      case 'license-expiry': return <LicenseExpiry />;
+      case 'export': return <Export />;
+      default: return <Dashboard />;
     }
   };
 
@@ -80,7 +106,7 @@ function AppContent() {
       <Header onLogout={handleLogout} />
 
       {/* Main Bottom Shell */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Left Sidebar */}
         <Sidebar />
 

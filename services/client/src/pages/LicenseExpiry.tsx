@@ -58,12 +58,36 @@ export const LicenseExpiry: React.FC = () => {
     }
   };
 
-  const notifyDriver = (driverName: string) => {
-    dispatch(addToast({
-      type: 'success',
-      title: 'SMS Alert Dispatched',
-      message: `Emergency license renewal alert message text has been SMSed to driver ${driverName}.`
-    }));
+  const notifyDriver = async (driverName: string, expiryDate: string) => {
+    try {
+      // Simulate real API call
+      const response = await fetch('/api/trigger-expiry-reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          driverName: driverName,
+          expiryDate: expiryDate
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const data = await response.json();
+      
+      dispatch(addToast({
+        type: 'success',
+        title: 'Email Alert Dispatched',
+        message: data.message || `Official renewal alert dispatched securely via SES to driver ${driverName}.`
+      }));
+    } catch (error: any) {
+      dispatch(addToast({
+        type: 'error',
+        title: 'Email Dispatch Failed',
+        message: 'Could not connect to external mail server.'
+      }));
+    }
   };
 
   const flagAudit = (driverName: string) => {
@@ -177,9 +201,9 @@ export const LicenseExpiry: React.FC = () => {
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
-                          onClick={() => notifyDriver(rec.name)}
+                          onClick={() => notifyDriver(rec.name, rec.expiryDate)}
                           className="p-1.5 rounded text-[#714B67] hover:bg-[#714B67]/5 dark:text-purple-300 dark:hover:bg-purple-900/10 cursor-pointer"
-                          title="Send SMS Notification"
+                          title="Send Email Notification"
                         >
                           <Send className="h-4 w-4" />
                         </button>
