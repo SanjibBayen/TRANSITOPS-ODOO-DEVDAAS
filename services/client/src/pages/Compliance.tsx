@@ -175,7 +175,7 @@ export const Compliance: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-zinc-800">
               {filteredLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 font-medium">
+                <tr key={log.id} className="hover:bg-gray-50 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 font-medium">
                   <td className="py-3.5 px-4 font-mono font-bold text-[#714B67] dark:text-purple-300">{log.id}</td>
                   <td className="py-3.5 px-4 font-bold text-gray-900 dark:text-zinc-100">{log.driverName}</td>
                   <td className="py-3.5 px-4 font-bold">{log.category}</td>
