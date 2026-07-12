@@ -216,129 +216,202 @@ export const Drivers: React.FC = () => {
       </div>
 
       {/* Drivers Data Table */}
-      <div className="rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col justify-between">
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#f5f3f3] dark:bg-zinc-800 text-[10px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider border-b border-gray-200 dark:border-zinc-800">
-                <th className="py-3 px-4 w-10">
-                  <input type="checkbox" className="rounded border-gray-300 dark:border-zinc-700 text-[#714B67] focus:ring-[#714B67]" />
-                </th>
-                <th className="py-3 px-4">Pilot Profile</th>
-                <th className="py-3 px-4">License Credentials</th>
-                <th className="py-3 px-4">Medical Standard</th>
-                <th className="py-3 px-4">Compliance Status</th>
-                <th className="py-3 px-4">Performance Rating</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#eae8e7] dark:divide-zinc-800">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-xs font-bold text-gray-500 dark:text-zinc-400">
-                    Loading drivers...
-                  </td>
-                </tr>
-              ) : filteredDrivers.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-xs font-bold text-gray-500 dark:text-zinc-400">
-                    No driver records matched current queries.
-                  </td>
-                </tr>
-              ) : (
-                filteredDrivers.map((driver) => (
-                  <tr key={driver.id} className="hover:bg-gray-50 dark:hover:bg-zinc-800 text-xs font-medium text-[#4d4847] dark:text-zinc-300 transition-all group">
-                    <td className="py-3.5 px-4">
-                      <input type="checkbox" className="rounded border-gray-300 dark:border-zinc-700 text-[#714B67] focus:ring-[#714B67]" />
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={driver.avatar}
-                          alt={driver.name}
-                          className="h-10 w-10 rounded-full border border-gray-100 dark:border-zinc-800 object-cover shrink-0"
-                        />
-                        <div>
-                          <span className="font-extrabold text-[#1b1c1c] dark:text-zinc-100 block">
-                            {driver.name}
-                          </span>
-                          <span className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5 font-bold flex items-center gap-2">
-                            ID: <span className="font-mono text-[#714B67] bg-[#fdfafc] dark:bg-[#714B67]/20 p-0.5 rounded">{driver.id}</span>
-                            <span className="text-[#829c62]">Present</span>
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-bold text-[#1b1c1c] dark:text-zinc-100 block">
-                        {driver.licenseNo}
-                      </span>
-                      <span className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5 font-semibold flex items-center gap-1.5">
-                        <Award className="h-3 w-3" />
-                        {driver.licenseType} (Exp: {driver.licenseExpiry})
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-1.5">
-                        <HeartPulse className={`h-4 w-4 shrink-0 ${driver.medicalStatus === 'Passed' ? 'text-[#829c62]' : 'text-amber-500'}`} />
-                        <div>
-                          <span className="font-bold block text-[#1b1c1c] dark:text-zinc-100">{driver.medicalStatus}</span>
-                          <span className="text-[10px] text-gray-500 dark:text-zinc-400 font-semibold block mt-0.5">Exp: {driver.medicalExpiry}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {driver.status === 'Available' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#f4f7f4] px-2.5 py-0.5 text-[10px] font-bold text-[#34451e] border border-[#d3dfd3]">
-                          Available
-                        </span>
-                      ) : driver.status === 'On Trip' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[#e6fcf5] px-2.5 py-0.5 text-[10px] font-bold text-[#006a68] border border-[#006a68]/20">
-                          On Route
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
-                          On Leave
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="font-extrabold text-[#1b1c1c] dark:text-zinc-100 block">
-                        ★ {driver.rating}
-                      </span>
-                      <span className="text-[10px] text-gray-500 dark:text-zinc-400 font-semibold mt-0.5 block">
-                        {driver.tripsCompleted} missions completed
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleOpenEdit(driver)}
-                          className="p-1 rounded bg-[#fdfafc] dark:bg-[#714B67]/20 text-[#714B67] border border-gray-200 dark:border-zinc-800 hover:border-[#714B67] transition-all cursor-pointer"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => removeDriver(driver.id)}
-                          className="p-1 rounded bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white transition-all cursor-pointer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Drivers Data Table */}
+<div className="rounded-xl bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
 
-        <div className="p-4 bg-gray-50 dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-800 flex items-center justify-between text-xs text-gray-500 dark:text-zinc-400 font-semibold">
-          <span>Showing 1-{filteredDrivers.length} of {filteredDrivers.length} pilots</span>
-        </div>
+  <div className="overflow-x-auto">
+    <table className="w-full text-left border-collapse">
+      <thead className="sticky top-0 z-10">
+        <tr className="bg-[#f5f3f3]/95 dark:bg-zinc-800/95 backdrop-blur-sm text-[10px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider border-b border-gray-200 dark:border-zinc-800">
+          <th className="py-3 px-4 w-10">
+            <input type="checkbox" className="rounded border-gray-300 dark:border-zinc-700 text-[#714B67] focus:ring-[#714B67] cursor-pointer" />
+          </th>
+          <th className="py-3 px-4">Pilot Profile</th>
+          <th className="py-3 px-4">License Credentials</th>
+          <th className="py-3 px-4">Medical Standard</th>
+          <th className="py-3 px-4">Compliance Status</th>
+          <th className="py-3 px-4">Performance Rating</th>
+          <th className="py-3 px-4 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-[#eae8e7] dark:divide-zinc-800">
+        {isLoading ? (
+          <tr>
+            <td colSpan={7} className="py-16">
+              <div className="flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-zinc-500">
+                <div className="h-6 w-6 border-2 border-[#714B67]/30 border-t-[#714B67] rounded-full animate-spin" />
+                <span className="text-xs font-bold">Loading driver records…</span>
+              </div>
+            </td>
+          </tr>
+        ) : filteredDrivers.length === 0 ? (
+          <tr>
+            <td colSpan={7} className="py-16">
+              <div className="flex flex-col items-center justify-center gap-2 text-gray-400 dark:text-zinc-500">
+                <Users className="h-8 w-8 opacity-40" />
+                <span className="text-xs font-bold">No driver records matched current queries.</span>
+                <span className="text-[10px] font-medium">Try adjusting your search or filters.</span>
+              </div>
+            </td>
+          </tr>
+        ) : (
+          filteredDrivers.map((driver) => (
+            <tr
+              key={driver.id}
+              className="hover:bg-[#fdfafc] dark:hover:bg-zinc-800/60 text-xs font-medium text-[#4d4847] dark:text-zinc-300 transition-colors group"
+            >
+              <td className="py-3.5 px-4">
+                <input type="checkbox" className="rounded border-gray-300 dark:border-zinc-700 text-[#714B67] focus:ring-[#714B67] cursor-pointer" />
+              </td>
 
-      </div>
+              {/* Pilot Profile */}
+              <td className="py-3.5 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative shrink-0">
+                    <img
+                      src={driver.avatar}
+                      alt={driver.name}
+                      className="h-10 w-10 rounded-full border border-gray-100 dark:border-zinc-800 object-cover"
+                    />
+                    <span
+                      className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-zinc-900 ${
+                        driver.attendanceStatus === 'Present'
+                          ? 'bg-[#829c62]'
+                          : driver.attendanceStatus === 'Off-duty'
+                          ? 'bg-amber-400'
+                          : 'bg-red-400'
+                      }`}
+                      title={driver.attendanceStatus}
+                    />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-[#1b1c1c] dark:text-zinc-100 block leading-tight">
+                      {driver.name}
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5 font-bold flex items-center gap-1.5">
+                      <span className="font-mono text-[#714B67] bg-[#fdfafc] dark:bg-[#714B67]/20 px-1 py-0.5 rounded">
+                        {driver.id}
+                      </span>
+                      <span className="text-gray-400 dark:text-zinc-500">·</span>
+                      <span>{driver.attendanceStatus}</span>
+                    </span>
+                  </div>
+                </div>
+              </td>
+
+              {/* License Credentials */}
+              <td className="py-3.5 px-4">
+                <span className="font-bold text-[#1b1c1c] dark:text-zinc-100 block">
+                  {driver.licenseNo}
+                </span>
+                <span className="text-[10px] text-gray-500 dark:text-zinc-400 mt-0.5 font-semibold flex items-center gap-1.5">
+                  <Award className="h-3 w-3 shrink-0" />
+                  {driver.licenseType}
+                  <span className="text-gray-300 dark:text-zinc-600">•</span>
+                  Exp {driver.licenseExpiry}
+                </span>
+              </td>
+
+              {/* Medical Standard */}
+              <td className="py-3.5 px-4">
+                <div className="flex items-center gap-1.5">
+                  <HeartPulse
+                    className={`h-4 w-4 shrink-0 ${
+                      driver.medicalStatus === 'Passed' ? 'text-[#829c62]' : 'text-amber-500'
+                    }`}
+                  />
+                  <div>
+                    <span className="font-bold block text-[#1b1c1c] dark:text-zinc-100">
+                      {driver.medicalStatus}
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-zinc-400 font-semibold block mt-0.5">
+                      Exp {driver.medicalExpiry}
+                    </span>
+                  </div>
+                </div>
+              </td>
+
+              {/* Compliance Status */}
+              <td className="py-3.5 px-4">
+                {driver.status === 'Available' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f4f7f4] dark:bg-[#829c62]/10 px-2.5 py-1 text-[10px] font-bold text-[#34451e] dark:text-[#a8c48a] border border-[#d3dfd3] dark:border-[#829c62]/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#829c62]" />
+                    Available
+                  </span>
+                ) : driver.status === 'On Trip' ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e6fcf5] dark:bg-[#006a68]/10 px-2.5 py-1 text-[10px] font-bold text-[#006a68] dark:text-[#5fd8d4] border border-[#006a68]/20">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#006a68]" />
+                    On Route
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                    On Leave
+                  </span>
+                )}
+              </td>
+
+              {/* Performance Rating */}
+              <td className="py-3.5 px-4">
+                <span className="font-extrabold text-[#1b1c1c] dark:text-zinc-100 flex items-center gap-1">
+                  <span className="text-amber-400">★</span>
+                  {driver.rating.toFixed(1)}
+                </span>
+                <span className="text-[10px] text-gray-500 dark:text-zinc-400 font-semibold mt-0.5 block">
+                  {driver.tripsCompleted} missions completed
+                </span>
+              </td>
+
+              {/* Actions */}
+              <td className="py-3.5 px-4 text-right">
+                <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleOpenEdit(driver)}
+                    title="Edit driver"
+                    className="p-1.5 rounded-lg bg-[#fdfafc] dark:bg-[#714B67]/20 text-[#714B67] border border-gray-200 dark:border-zinc-800 hover:bg-[#714B67] hover:text-white hover:border-[#714B67] transition-all cursor-pointer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => removeDriver(driver.id)}
+                    title="Remove driver"
+                    className="p-1.5 rounded-lg bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-500/20 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Footer / Pagination */}
+  <div className="p-4 bg-gray-50 dark:bg-zinc-950 border-t border-gray-200 dark:border-zinc-800 flex items-center justify-between text-xs text-gray-500 dark:text-zinc-400 font-semibold">
+    <span>
+      Showing <span className="text-[#1b1c1c] dark:text-zinc-200 font-bold">{filteredDrivers.length}</span> of{' '}
+      <span className="text-[#1b1c1c] dark:text-zinc-200 font-bold">{drivers.length}</span> pilots
+    </span>
+    <div className="flex items-center gap-1.5">
+      <button
+        disabled
+        className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 text-[10px] font-bold text-gray-400 dark:text-zinc-600 disabled:cursor-not-allowed"
+      >
+        Previous
+      </button>
+      <span className="px-2.5 py-1.5 rounded-lg bg-[#714B67] text-white text-[10px] font-bold">1</span>
+      <button
+        disabled
+        className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-800 text-[10px] font-bold text-gray-400 dark:text-zinc-600 disabled:cursor-not-allowed"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+
+</div>
 
       {/* Driver Add/Edit Modal */}
       {isModalOpen && (
