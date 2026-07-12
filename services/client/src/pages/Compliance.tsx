@@ -148,7 +148,7 @@ export const Compliance: React.FC = () => {
                   className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wide border cursor-pointer transition-colors ${
                     filterCategory === cat
                       ? 'bg-[#714B67] text-white border-[#714B67]'
-                      : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800'
+                      : 'bg-white dark:bg-zinc-900/50 border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
                   }`}
                 >
                   {cat}
