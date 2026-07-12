@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { asyncHandler } from '../../utils/asyncHandler';
 
+
 export class AnalyticsController {
     private service = new AnalyticsService();
 
