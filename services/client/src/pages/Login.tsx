@@ -1,301 +1,287 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { setActiveTab } from '../store/slices/uiSlice.ts';
-import { loginSuccess } from '../store/slices/authSlice.ts';
-import api from '../lib/axios.ts';
+import { setActiveTab } from '../store/slices/uiSlice';
+import { loginSuccess } from '../store/slices/authSlice';
+import api from '../lib/axios';
 import { toast } from 'sonner';
-import { ShieldAlert, LogIn, Lock, Mail, Users, Truck, ShieldCheck, Landmark, UserPlus, Upload } from 'lucide-react';
+import { 
+  LogIn, Lock, Mail, Users, Truck, ShieldCheck, Landmark, 
+  UserPlus, Eye, EyeOff, ArrowRight
+} from 'lucide-react';
 
 type UserRole = 'Manager' | 'Driver' | 'Safety Officer' | 'Financial Analyst';
 
+const BACKEND_ROLES: Record<UserRole, string> = {
+  'Manager': 'FLEET_MANAGER',
+  'Driver': 'DRIVER',
+  'Safety Officer': 'SAFETY_OFFICER',
+  'Financial Analyst': 'FINANCIAL_ANALYST',
+};
+
+const DEMO_USERS: Record<UserRole, { email: string; password: string }> = {
+  'Manager': { email: 'john.fleet@transitops.com', password: 'Test@123' },
+  'Driver': { email: 'alex.driver@transitops.com', password: 'Test@123' },
+  'Safety Officer': { email: 'mike.safety@transitops.com', password: 'Test@123' },
+  'Financial Analyst': { email: 'emma.finance@transitops.com', password: 'Test@123' },
+};
+
+const roleConfigs = {
+  'Manager': { icon: Truck, label: 'Fleet Manager', color: 'from-indigo-500 to-purple-600', bg: 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300' },
+  'Driver': { icon: Users, label: 'Driver', color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300' },
+  'Safety Officer': { icon: ShieldCheck, label: 'Safety Officer', color: 'from-blue-500 to-cyan-600', bg: 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300' },
+  'Financial Analyst': { icon: Landmark, label: 'Financial Analyst', color: 'from-amber-500 to-orange-600', bg: 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300' },
+};
+
 export const Login: React.FC = () => {
   const dispatch = useDispatch();
-  
-  const [isLoginMode, setIsLoginMode] = useState(true);
+
   const [selectedRole, setSelectedRole] = useState<UserRole>('Manager');
-  
-  // Form fields
+  const [email, setEmail] = useState(DEMO_USERS['Manager'].email);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('admin@transitops.in');
-  const [password, setPassword] = useState('••••••••••••');
-  
+  const [isLoginMode, setIsLoginMode] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const roleConfigs = {
-    'Manager': {
-      email: 'admin@transitops.in',
-      name: 'Raven K. (Fleet Manager)',
-      scope: 'fleet-manager' as const,
-      icon: Truck,
-      color: 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/30 dark:border-indigo-800 dark:text-indigo-300'
-    },
-    'Driver': {
-      email: 'driver@transitops.in',
-      name: 'Suresh Kumar (Driver)',
-      scope: 'dispatcher' as const,
-      icon: Users,
-      color: 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-300'
-    },
-    'Safety Officer': {
-      email: 'safety@transitops.in',
-      name: 'Vikram Singh (Safety Officer)',
-      scope: 'fleet-manager' as const,
-      icon: ShieldCheck,
-      color: 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-300'
-    },
-    'Financial Analyst': {
-      email: 'finance@transitops.in',
-      name: 'Anjali Sharma (Financial Analyst)',
-      scope: 'fleet-manager' as const,
-      icon: Landmark,
-      color: 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-300'
-    }
-  };
+  const [rememberMe, setRememberMe] = useState(true);
 
   const selectRole = (role: UserRole) => {
     setSelectedRole(role);
-    setEmail(isLoginMode ? roleConfigs[role].email : '');
-    setPassword(isLoginMode ? '••••••••••••' : '');
+    setEmail(DEMO_USERS[role].email);
+    setPassword('');
     setFormError(null);
   };
 
-  const handleToggleMode = () => {
-    setIsLoginMode(!isLoginMode);
-    setFormError(null);
-    if (!isLoginMode) {
-      // Switching to login
-      setEmail(roleConfigs[selectedRole].email);
-      setPassword('••••••••••••');
-    } else {
-      // Switching to signup
-      setEmail('');
-      setPassword('');
-      setName('');
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim() || !password.trim()) {
+      setFormError('Please fill in all required fields.');
+      return;
     }
-  };
+    if (!isLoginMode && !name.trim()) {
+      setFormError('Please enter your full name.');
+      return;
+    }
 
-  const handleAuth = async () => {
+    setFormError(null);
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
       let response;
+      
       if (isLoginMode) {
-        response = await api.post('/auth/login', { email, password });
+        response = await api.post('/auth/login', { email: email.trim(), password });
       } else {
-        response = await api.post('/auth/signup', { email, password, name, role: selectedRole });
+        response = await api.post('/auth/signup', {
+          email: email.trim(),
+          password,
+          name: name.trim(),
+          role: BACKEND_ROLES[selectedRole],
+        });
       }
 
-      const { access_token, refresh_token } = response.data.data.session;
-      const { user } = response.data.data;
+      const { user, session } = response.data.data;
       
-      localStorage.setItem('access_token', access_token);
-      if (refresh_token) {
-        localStorage.setItem('refresh_token', refresh_token);
+      if (rememberMe) {
+        localStorage.setItem('access_token', session.access_token);
+        if (session.refresh_token) localStorage.setItem('refresh_token', session.refresh_token);
+      } else {
+        sessionStorage.setItem('access_token', session.access_token);
       }
-      
-      const config = roleConfigs[selectedRole];
+
       dispatch(loginSuccess({
         user: {
           id: user.id,
           email: user.email,
-          name: user.name,
-          role: user.role || selectedRole,
-          avatar: user.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDYBkw3LHcTwmizgJ3i8YKR18fYqElE3Mg9j2KIiAk20JcN3_h5fi77C0J2BvviOW_QR2oyHcQ1XeYxnzmkweobMewYAuRyAzEJWCwz1f8yi2isPQCNymxtX7N0ODA2q72p8krMwTYMqNCrLU0kY2W6SZhU8o4L_fBJxZlYDMT_ZRzWlderTFed7dQY7vdEiknxiWpdbu7Khs7Et6zBYfdMI_lfWSWZaqHVYJvvx84zfuptWyJN5g9-'
+          name: user.name || name,
+          role: user.role || BACKEND_ROLES[selectedRole],
+          avatar: '',
         },
-        scope: config.scope
+        scope: selectedRole === 'Driver' ? 'dispatcher' : 'fleet-manager',
       }));
-      
-      toast.success(isLoginMode ? 'Logged in successfully' : 'Account created successfully');
-      
-      // Redirect driver directly to dashboard/my trips
+
+      toast.success(`Welcome back, ${user.name || name}`);
       dispatch(setActiveTab('dashboard'));
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || (isLoginMode ? 'Login failed' : 'Registration failed');
-      setFormError(errorMsg);
-      toast.error(errorMsg);
+      const message = error.response?.data?.message || 'Authentication failed. Please try again.';
+      setFormError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password || (!isLoginMode && !name)) {
-      setFormError('Please fill in all required fields.');
-      return;
-    }
-    setFormError(null);
-    handleAuth();
-  };
+  const config = roleConfigs[selectedRole];
+  const IconComponent = config.icon;
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-[#f8f9fa] dark:bg-zinc-950 font-sans text-gray-800 dark:text-zinc-200 transition-colors duration-300 p-4">
-      <div className="w-full max-w-[480px] bg-white dark:bg-zinc-900 p-6 sm:p-8 border border-gray-200 dark:border-zinc-800 rounded shadow-sm">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-4 sm:p-6">
+      <div className="w-full max-w-[440px]">
         
-        {/* Brand Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded bg-[#714B67] text-white font-extrabold text-2xl shadow-sm mb-3">
-            T
+        {/* Brand */}
+        <div className="text-center mb-8">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#714B67] to-[#5a3b52] text-white shadow-lg shadow-[#714B67]/25 mb-4">
+            <span className="text-2xl font-black tracking-tight">T</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100 tracking-tight">
-            TransitOps
-          </h2>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
-            Enterprise Fleet Command Suite
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">TransitOps</h1>
+          <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mt-1">Enterprise Fleet Command Suite</p>
         </div>
 
-        {/* Role Segmented Selection */}
-        <div className="mb-6">
-          <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2 text-center">
-            Select Your Role-Based Portal
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(roleConfigs) as UserRole[]).map((role) => {
-              const config = roleConfigs[role];
-              const IconComponent = config.icon;
-              const isSelected = selectedRole === role;
-              return (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => selectRole(role)}
-                  className={`flex flex-col items-center justify-center p-3 rounded border text-center transition-all cursor-pointer ${
-                    isSelected
-                      ? 'border-[#714B67] bg-purple-50/50 dark:bg-purple-950/20 text-[#714B67] ring-1 ring-[#714B67]'
-                      : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-400'
-                  }`}
-                >
-                  <IconComponent className={`h-5 w-5 mb-1 ${isSelected ? 'text-[#714B67]' : 'text-gray-400'}`} />
-                  <span className="text-[11px] font-bold">{role}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Current Role Banner */}
-        <div className={`mb-5 p-3 rounded border text-xs font-semibold ${roleConfigs[selectedRole].color}`}>
-          Log-in Mode: <span className="font-bold">{selectedRole}</span> — Access with custom permissions enabled.
-        </div>
-
-        {/* Error notification banner */}
-        {(formError) && (
-          <div className="mb-5 flex items-start gap-2.5 rounded bg-red-50 dark:bg-red-950/20 p-3.5 border border-red-100 dark:border-red-900 text-red-800 dark:text-red-300 text-xs font-medium">
-            <ShieldAlert className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold block">Access Denied</span>
-              {formError}
+        {/* Card */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-xl shadow-gray-200/50 dark:shadow-black/20 overflow-hidden">
+          
+          {/* Role Selector */}
+          <div className="p-5 pb-0">
+            <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-3 text-center">
+              Select Portal
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {(Object.keys(roleConfigs) as UserRole[]).map((role) => {
+                const cfg = roleConfigs[role];
+                const Icon = cfg.icon;
+                const isActive = selectedRole === role;
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => selectRole(role)}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      isActive
+                        ? 'border-[#714B67] bg-purple-50/50 dark:bg-purple-950/20 shadow-sm'
+                        : 'border-transparent hover:border-gray-200 dark:hover:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? 'text-[#714B67]' : 'text-gray-400 dark:text-zinc-500'}`} />
+                    <span className={`text-[10px] font-bold leading-tight ${isActive ? 'text-[#714B67]' : 'text-gray-500 dark:text-zinc-400'}`}>
+                      {role}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
-        )}
 
-        {/* Form */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          
-          {!isLoginMode && (
+          {/* Role Banner */}
+          <div className={`mx-5 mt-4 p-3 rounded-xl border text-xs font-semibold ${config.bg}`}>
+            <div className="flex items-center gap-2">
+              <IconComponent className="h-4 w-4 shrink-0" />
+              <span>Accessing as <strong>{config.label}</strong></span>
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-5 pt-4 space-y-4">
+            
+            {/* Error */}
+            {formError && (
+              <div className="flex items-start gap-3 rounded-xl bg-red-50 dark:bg-red-950/30 p-3.5 border border-red-100 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs font-medium animate-shake">
+                <div className="h-5 w-5 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-red-600 dark:text-red-400 text-[10px] font-bold">!</span>
+                </div>
+                <span>{formError}</span>
+              </div>
+            )}
+
+            {/* Name (Signup) */}
+            {!isLoginMode && (
+              <div>
+                <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Full Name</label>
+                <div className="relative">
+                  <Users className="absolute left-3.5 top-2.5 h-4 w-4 text-gray-400 dark:text-zinc-500" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/20 focus:outline-none transition-all font-medium"
+                    placeholder="John Doe"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Email */}
             <div>
-              <label htmlFor="name" className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                Full Name
-              </label>
+              <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Email Address</label>
               <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <Users className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
-                </span>
+                <Mail className="absolute left-3.5 top-2.5 h-4 w-4 text-gray-400 dark:text-zinc-500" />
                 <input
-                  id="name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="block w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-2.5 pl-9 pr-3 text-xs text-gray-800 dark:text-zinc-200 focus:border-[#714B67] focus:ring-1 focus:ring-[#714B67] focus:outline-none transition-all font-semibold"
-                  placeholder="John Doe"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/20 focus:outline-none transition-all font-medium"
+                  placeholder="email@transitops.com"
                 />
               </div>
             </div>
-          )}
 
-          <div>
-            <label htmlFor="email" className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-              Email Address
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Mail className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
-              </span>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="block w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-2.5 pl-9 pr-3 text-xs text-gray-800 dark:text-zinc-200 focus:border-[#714B67] focus:ring-1 focus:ring-[#714B67] focus:outline-none transition-all font-semibold"
-                placeholder="email@transitops.in"
-              />
+            {/* Password */}
+            <div>
+              <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-2.5 h-4 w-4 text-gray-400 dark:text-zinc-500" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 py-2.5 pl-10 pr-10 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-zinc-500 focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/20 focus:outline-none transition-all font-medium"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-2.5 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="key" className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">
-                Password
+            {/* Options */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-zinc-400 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded-md border-gray-300 dark:border-zinc-600 text-[#714B67] focus:ring-[#714B67] h-4 w-4"
+                />
+                Remember me
               </label>
-              {isLoginMode && (
-                <a href="#" className="text-[10px] font-bold text-[#714B67] hover:underline">
-                  Reset Password?
-                </a>
-              )}
+              <button
+                type="button"
+                onClick={() => { setIsLoginMode(!isLoginMode); setFormError(null); setPassword(''); }}
+                className="text-xs font-bold text-[#714B67] hover:text-[#5e3b56] transition-colors"
+              >
+                {isLoginMode ? 'Create account' : 'Sign in'}
+              </button>
             </div>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Lock className="h-4 w-4 text-gray-400 dark:text-zinc-500" />
-              </span>
-              <input
-                id="key"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-2.5 pl-9 pr-3 text-xs text-gray-800 dark:text-zinc-200 focus:border-[#714B67] focus:ring-1 focus:ring-[#714B67] focus:outline-none transition-all font-semibold"
-              />
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-zinc-400 cursor-pointer">
-              <input
-                type="checkbox"
-                defaultChecked
-                className="rounded border-gray-300 dark:border-zinc-700 text-[#714B67] focus:ring-[#714B67] h-4 w-4"
-              />
-              Keep me logged in
-            </label>
+            {/* Submit */}
             <button
-              type="button"
-              onClick={handleToggleMode}
-              className="text-xs font-bold text-[#714B67] hover:underline"
+              type="submit"
+              disabled={isLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#714B67] to-[#5e3b56] py-3 text-sm font-bold text-white hover:from-[#5e3b56] hover:to-[#4a2e44] transition-all shadow-lg shadow-[#714B67]/25 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoginMode ? 'Create new account' : 'Already have an account?'}
+              {isLoading ? (
+                <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  {isLoginMode ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                  {isLoginMode ? `Enter ${config.label} Portal` : 'Create Account'}
+                  <ArrowRight className="h-4 w-4 ml-1" />
+                </>
+              )}
             </button>
+          </form>
+
+          {/* Footer */}
+          <div className="border-t border-gray-100 dark:border-zinc-800 px-5 py-4 text-center">
+            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-medium">
+              TransitOps Enterprise Edition v4.2
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="flex w-full items-center justify-center gap-2 rounded bg-[#714B67] py-2.5 text-xs font-bold text-white hover:bg-[#5e3b56] transition-colors shadow-sm cursor-pointer disabled:opacity-50 mt-2"
-          >
-            {isLoginMode ? <LogIn className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-            {isLoading ? 'Connecting...' : (isLoginMode ? `Enter ${selectedRole} Portal` : 'Sign Up')}
-          </button>
-        </form>
-
-        {/* Footer info in Odoo style */}
-        <div className="mt-6 text-center border-t border-gray-100 dark:border-zinc-800 pt-4">
-          <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-medium">
-            TransitOps Enterprise Edition v4.2
-          </p>
         </div>
-
       </div>
     </div>
   );
