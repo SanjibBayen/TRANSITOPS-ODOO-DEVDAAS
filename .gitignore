@@ -1,0 +1,23 @@
+# .gitignore
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# Build
+dist/
+build/
+
+# Docker
+docker-compose.override.yml
+
+# BUT ALLOW migrations folder
+# !prisma/migrations/
+
+# Allow .gitkeep files
+# !.gitkeep
+
+# Keep empty folders
+!.gitkeep
