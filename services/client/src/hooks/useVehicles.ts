@@ -1,80 +1,116 @@
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store/index.ts';
-import { fetchVehicles, createVehicle, updateVehicle, deleteVehicle, setVehicleStatusAPI, updateOdometer, Vehicle } from '../store/slices/vehicleSlice.ts';
+import { useState, useCallback } from 'react';
+import api from '../lib/axios';
 import { toast } from 'sonner';
 
+export interface Vehicle {
+  id: string;
+  registration_number: string;
+  model: string;
+  type: string;
+  brand?: string;
+  year?: number;
+  max_load_capacity: number;
+  current_odometer: number;
+  acquisition_cost: number;
+  status: 'AVAILABLE' | 'ON_TRIP' | 'IN_SHOP' | 'RETIRED';
+  region?: string;
+  fuel_type?: string;
+  created_at: string;
+}
+
 export const useVehicles = () => {
-  const dispatch = useDispatch<any>();
-  const { vehicles, isLoading, error } = useSelector((state: RootState) => state.vehicles);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadVehicles = async () => {
+  const loadVehicles = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      await dispatch(fetchVehicles()).unwrap();
+      const response = await api.get('/vehicles');
+      setVehicles(response.data.data || []);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch vehicles');
+      const message = err.response?.data?.message || 'Failed to load vehicles';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const createNewVehicle = async (vehicle: any) => {
+  const createVehicle = useCallback(async (data: Partial<Vehicle>) => {
     try {
-      await dispatch(createVehicle(vehicle)).unwrap();
+      const response = await api.post('/vehicles', data);
+      setVehicles(prev => [...prev, response.data.data]);
       toast.success('Vehicle created successfully');
+      return response.data.data;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create vehicle');
+      toast.error(err.response?.data?.message || 'Failed to create vehicle');
+      throw err;
     }
-  };
+  }, []);
 
-  const editVehicle = async (vehicle: any) => {
+  const updateVehicle = useCallback(async (id: string, data: Partial<Vehicle>) => {
     try {
-      await dispatch(updateVehicle({ id: vehicle.id || vehicle.regNo, data: vehicle })).unwrap();
+      const response = await api.put(`/vehicles/${id}`, data);
+      setVehicles(prev => prev.map(v => v.id === id ? response.data.data : v));
       toast.success('Vehicle updated successfully');
+      return response.data.data;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update vehicle');
+      toast.error(err.response?.data?.message || 'Failed to update vehicle');
+      throw err;
     }
-  };
+  }, []);
 
-  const removeVehicle = async (regNo: string) => {
-    // There is no DELETE API in requirements, but slice supports filter.
-    dispatch(deleteVehicle(regNo));
-    toast.success('Vehicle deleted locally');
-  };
-
-  const changeVehicleStatus = async (id: string, status: Vehicle['status']) => {
+  const updateVehicleStatus = useCallback(async (id: string, status: Vehicle['status']) => {
     try {
-      await dispatch(setVehicleStatusAPI({ id, status })).unwrap();
+      const response = await api.patch(`/vehicles/${id}/status`, { status });
+      setVehicles(prev => prev.map(v => v.id === id ? response.data.data : v));
       toast.success('Status updated');
+      return response.data.data;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update status');
+      toast.error(err.response?.data?.message || 'Failed to update status');
+      throw err;
     }
-  };
+  }, []);
 
-  const addOdometerReading = (regNo: string, distance: number) => {
-    dispatch(updateOdometer({ regNo, distance }));
-  };
+  const getAvailableVehicles = useCallback(async () => {
+    try {
+      const response = await api.get('/vehicles/available');
+      return response.data.data || [];
+    } catch (err: any) {
+      toast.error('Failed to load available vehicles');
+      return [];
+    }
+  }, []);
 
-  // Compute live metrics dynamically!
-  const totalAssets = vehicles.length;
-  const availableCount = vehicles.filter(v => v.status === 'Available').length;
-  const inShopCount = vehicles.filter(v => v.status === 'In Shop').length;
-  const activeCount = vehicles.filter(v => v.status === 'On Trip' || v.status === 'ON_TRIP').length;
-  const retiredCount = vehicles.filter(v => v.status === 'Retired').length;
+  const getVehicleStats = useCallback(async () => {
+    try {
+      const response = await api.get('/vehicles/stats');
+      return response.data.data;
+    } catch {
+      return { total: 0, available: 0, onTrip: 0, inShop: 0, retired: 0 };
+    }
+  }, []);
+
+  const metrics = {
+    total: vehicles.length,
+    available: vehicles.filter(v => v.status === 'AVAILABLE').length,
+    onTrip: vehicles.filter(v => v.status === 'ON_TRIP').length,
+    inShop: vehicles.filter(v => v.status === 'IN_SHOP').length,
+    retired: vehicles.filter(v => v.status === 'RETIRED').length,
+  };
 
   return {
     vehicles,
     isLoading,
     error,
+    metrics,
     loadVehicles,
-    createNewVehicle,
-    editVehicle,
-    removeVehicle,
-    changeVehicleStatus,
-    addOdometerReading,
-    metrics: {
-      totalAssets,
-      availableCount,
-      inShopCount,
-      activeCount,
-      retiredCount
-    }
+    createVehicle,
+    updateVehicle,
+    updateVehicleStatus,
+    getAvailableVehicles,
+    getVehicleStats,
   };
 };

@@ -13,33 +13,33 @@ export interface SystemAlert {
   message: string;
 }
 
+export type ActiveTab = 
+  | 'dashboard' | 'fleet' | 'drivers' | 'trips' | 'dispatch'
+  | 'maintenance' | 'fuel' | 'analytics' | 'reports'
+  | 'settings' | 'support' | 'profile' | 'compliance' 
+  | 'license-expiry' | 'export' | 'documents';
+
 interface UiState {
-  activeTab: 'dashboard' | 'fleet' | 'drivers' | 'trips' | 'maintenance' | 'fuel' | 'analytics' | 'settings' | 'support' | 'profile' | 'compliance' | 'license-expiry' | 'export';
+  activeTab: ActiveTab;
   sidebarCollapsed: boolean;
   searchQuery: string;
   toasts: ToastMessage[];
   alerts: SystemAlert[];
 }
 
-const initialAlerts: SystemAlert[] = [
-  { id: '1', type: 'ALERT', message: 'Vehicle V-005 scheduled for maintenance in 2 hours.' },
-  { id: '2', type: 'INFO', message: 'Driver J. Smith completed trip TR099 ahead of schedule.' },
-  { id: '3', type: 'UPDATE', message: 'Weather warning: Heavy rain expected on Route 4.' }
-];
-
 const initialState: UiState = {
   activeTab: 'dashboard',
   sidebarCollapsed: false,
   searchQuery: '',
   toasts: [],
-  alerts: initialAlerts,
+  alerts: [],
 };
 
 export const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    setActiveTab: (state, action: PayloadAction<UiState['activeTab']>) => {
+    setActiveTab: (state, action: PayloadAction<ActiveTab>) => {
       state.activeTab = action.payload;
     },
     toggleSidebar: (state) => {
@@ -52,21 +52,24 @@ export const uiSlice = createSlice({
       state.searchQuery = action.payload;
     },
     addToast: (state, action: PayloadAction<Omit<ToastMessage, 'id'>>) => {
-      const id = 'toast_' + Math.random().toString(36).substr(2, 9);
-      state.toasts.push({ ...action.payload, id });
+      state.toasts.push({ ...action.payload, id: `toast_${Date.now()}_${Math.random().toString(36).substr(2, 6)}` });
+      if (state.toasts.length > 5) state.toasts.shift();
     },
     removeToast: (state, action: PayloadAction<string>) => {
       state.toasts = state.toasts.filter(t => t.id !== action.payload);
     },
-    addSystemAlert: (state, action: PayloadAction<Omit<SystemAlert, 'id'>>) => {
-      const id = 'alert_' + Math.random().toString(36).substr(2, 9);
-      state.alerts.push({ ...action.payload, id });
+    addAlert: (state, action: PayloadAction<Omit<SystemAlert, 'id'>>) => {
+      state.alerts.push({ ...action.payload, id: `alert_${Date.now()}` });
     },
-    removeSystemAlert: (state, action: PayloadAction<string>) => {
-      state.alerts = state.alerts.filter(a => t => a.id !== action.payload);
-    }
+    removeAlert: (state, action: PayloadAction<string>) => {
+      state.alerts = state.alerts.filter(a => a.id !== action.payload);
+    },
   },
 });
 
-export const { setActiveTab, toggleSidebar, setSidebarCollapsed, setSearchQuery, addToast, removeToast, addSystemAlert, removeSystemAlert } = uiSlice.actions;
+export const { 
+  setActiveTab, toggleSidebar, setSidebarCollapsed, 
+  setSearchQuery, addToast, removeToast, addAlert, removeAlert 
+} = uiSlice.actions;
+
 export default uiSlice.reducer;

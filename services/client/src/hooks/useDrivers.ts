@@ -1,74 +1,113 @@
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../store/index.ts';
-import { fetchDrivers, createDriver, updateDriver, deleteDriver, setDriverStatusAPI, setDriverAttendance, Driver } from '../store/slices/driverSlice.ts';
+import { useState, useCallback } from 'react';
+import api from '../lib/axios';
 import { toast } from 'sonner';
 
+export interface Driver {
+  id: string;
+  name: string;
+  email?: string;
+  phone: string;
+  license_number: string;
+  license_category: string;
+  license_expiry: string;
+  safety_score: number;
+  total_trips: number;
+  status: 'AVAILABLE' | 'ON_TRIP' | 'OFF_DUTY' | 'SUSPENDED';
+  created_at: string;
+}
+
 export const useDrivers = () => {
-  const dispatch = useDispatch<any>();
-  const { drivers, isLoading, error } = useSelector((state: RootState) => state.drivers);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const loadDrivers = async () => {
+  const loadDrivers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      await dispatch(fetchDrivers()).unwrap();
+      const response = await api.get('/drivers');
+      setDrivers(response.data.data || []);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to fetch drivers');
+      const message = err.response?.data?.message || 'Failed to load drivers';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  const createNewDriver = async (driver: any) => {
+  const createDriver = useCallback(async (data: Partial<Driver>) => {
     try {
-      await dispatch(createDriver(driver)).unwrap();
+      const response = await api.post('/drivers', data);
+      setDrivers(prev => [...prev, response.data.data]);
       toast.success('Driver created successfully');
+      return response.data.data;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to create driver');
+      toast.error(err.response?.data?.message || 'Failed to create driver');
+      throw err;
     }
-  };
+  }, []);
 
-  const editDriver = async (driver: any) => {
+  const updateDriver = useCallback(async (id: string, data: Partial<Driver>) => {
     try {
-      await dispatch(updateDriver({ id: driver.id, data: driver })).unwrap();
+      const response = await api.put(`/drivers/${id}`, data);
+      setDrivers(prev => prev.map(d => d.id === id ? response.data.data : d));
       toast.success('Driver updated successfully');
+      return response.data.data;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update driver');
+      toast.error(err.response?.data?.message || 'Failed to update driver');
+      throw err;
     }
-  };
+  }, []);
 
-  const removeDriver = (id: string) => {
-    dispatch(deleteDriver(id));
-    toast.success('Driver removed locally');
-  };
-
-  const changeDriverStatus = async (id: string, status: Driver['status']) => {
+  const updateDriverStatus = useCallback(async (id: string, status: Driver['status']) => {
     try {
-      await dispatch(setDriverStatusAPI({ id, status })).unwrap();
+      const response = await api.patch(`/drivers/${id}/status`, { status });
+      setDrivers(prev => prev.map(d => d.id === id ? response.data.data : d));
       toast.success('Status updated');
+      return response.data.data;
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update status');
+      toast.error(err.response?.data?.message || 'Failed to update status');
+      throw err;
     }
-  };
+  }, []);
 
-  const changeDriverAttendance = (id: string, status: Driver['attendanceStatus']) => {
-    dispatch(setDriverAttendance({ id, status }));
-  };
+  const getAvailableDrivers = useCallback(async () => {
+    try {
+      const response = await api.get('/drivers/available');
+      return response.data.data || [];
+    } catch {
+      return [];
+    }
+  }, []);
 
-  const totalDrivers = drivers.length;
-  const onDutyCount = drivers.filter(d => d.status === 'On Trip' || d.status === 'Available' || d.status === 'ON_TRIP' || d.status === 'AVAILABLE').length;
-  const availableDriversCount = drivers.filter(d => d.status === 'Available' || d.status === 'AVAILABLE').length;
+  const getExpiringLicenses = useCallback(async () => {
+    try {
+      const response = await api.get('/drivers/expiring-licenses');
+      return response.data.data || [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const metrics = {
+    total: drivers.length,
+    available: drivers.filter(d => d.status === 'AVAILABLE').length,
+    onTrip: drivers.filter(d => d.status === 'ON_TRIP').length,
+    offDuty: drivers.filter(d => d.status === 'OFF_DUTY').length,
+    suspended: drivers.filter(d => d.status === 'SUSPENDED').length,
+  };
 
   return {
     drivers,
     isLoading,
     error,
+    metrics,
     loadDrivers,
-    createNewDriver,
-    editDriver,
-    removeDriver,
-    changeDriverStatus,
-    changeDriverAttendance,
-    metrics: {
-      totalDrivers,
-      onDutyCount,
-      availableDriversCount
-    }
+    createDriver,
+    updateDriver,
+    updateDriverStatus,
+    getAvailableDrivers,
+    getExpiringLicenses,
   };
 };
