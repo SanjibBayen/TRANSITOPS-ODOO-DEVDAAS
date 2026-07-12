@@ -43,7 +43,7 @@ export const Login: React.FC = () => {
 
   const [selectedRole, setSelectedRole] = useState<UserRole>('Manager');
   const [email, setEmail] = useState(DEMO_USERS['Manager'].email);
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(DEMO_USERS['Manager'].password);
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [isLoginMode, setIsLoginMode] = useState(true);
@@ -51,11 +51,26 @@ export const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
-  const selectRole = (role: UserRole) => {
+  const selectRole = async (role: UserRole) => {
     setSelectedRole(role);
     setEmail(DEMO_USERS[role].email);
-    setPassword('');
+    setPassword(DEMO_USERS[role].password);
     setFormError(null);
+    
+    if (isLoginMode) {
+      setIsLoading(true);
+      try {
+        await dispatch(loginUser({ email: DEMO_USERS[role].email, password: DEMO_USERS[role].password })).unwrap();
+        toast.success(`Logged in as ${role}`);
+        dispatch(setActiveTab('dashboard'));
+      } catch (error: any) {
+        const message = typeof error === 'string' ? error : error?.message || 'Login failed';
+        setFormError(message);
+        toast.error(message);
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,21 +93,8 @@ export const Login: React.FC = () => {
         await dispatch(loginUser({ email: email.trim(), password })).unwrap();
         toast.success('Welcome back!');
       } else {
-        const response = await api.post('/auth/signup', {
-          email: email.trim(),
-          password,
-          name: name.trim(),
-          role: BACKEND_ROLES[selectedRole],
-        });
-
-        const { user, session } = response.data.data;
-        
-        if (rememberMe) {
-          localStorage.setItem('access_token', session.access_token);
-          if (session.refresh_token) localStorage.setItem('refresh_token', session.refresh_token);
-        } else {
-          sessionStorage.setItem('access_token', session.access_token);
-        }
+        // Mock signup just maps to the mock login action for demo purposes
+        await dispatch(loginUser({ email: email.trim(), password })).unwrap();
         toast.success('Account created successfully!');
       }
 
@@ -300,7 +302,7 @@ export const Login: React.FC = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => { setIsLoginMode(!isLoginMode); setFormError(null); setPassword(''); }}
+                  onClick={() => { setIsLoginMode(!isLoginMode); setFormError(null); setPassword(DEMO_USERS[selectedRole].password); }}
                   className="text-[11px] font-bold text-[#714B67] hover:text-[#5e3b56] transition-colors cursor-pointer"
                 >
                   {isLoginMode ? 'Create account' : 'Sign in'}
