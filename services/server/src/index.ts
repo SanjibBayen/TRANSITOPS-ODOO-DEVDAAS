@@ -30,30 +30,41 @@ async function startServer() {
     const { data, error } = await supabaseAdmin.from('vehicles').select('count').single();
 
     if (error) {
-      console.warn('⚠️  Supabase connection warning:', error.message);
+      console.warn('Supabase connection warning:', error.message);
       console.log('   Make sure your tables are created in Supabase');
     } else {
-      console.log('✅ Supabase connected successfully');
+      console.log('Supabase connected successfully');
     }
+
+    // Handle server listen errors
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Choose a different PORT or stop the process using it.`);
+        console.error('If you are using nodemon, make sure the previous instance is not still running.');
+        process.exit(1);
+      }
+      console.error('Server error:', err);
+      process.exit(1);
+    });
 
     // Start server
     server.listen(PORT, () => {
       console.log('');
       console.log('========================================');
-      console.log(`🚀 TransitOps Server Running`);
+      console.log(`TransitOps Server Running`);
       console.log('========================================');
-      console.log(`📍 URL:        http://localhost:${PORT}`);
-      console.log(`🔗 API:        http://localhost:${PORT}/api/v1`);
-      console.log(`💚 Health:     http://localhost:${PORT}/api/health`);
-      console.log(`🔌 WebSocket:  ws://localhost:${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`URL:        http://localhost:${PORT}`);
+      console.log(`API:        http://localhost:${PORT}/api/v1`);
+      console.log(`Health:     http://localhost:${PORT}/api/health`);
+      console.log(` WebSocket:  ws://localhost:${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log('========================================');
     });
 
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       console.log(`\n${signal} received. Shutting down gracefully...`);
-      
+
       // Close Socket.io
       io.close(() => {
         console.log('Socket.io closed');
@@ -90,7 +101,7 @@ async function startServer() {
     });
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
