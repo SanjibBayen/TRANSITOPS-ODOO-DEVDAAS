@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { setActiveTab } from '../store/slices/uiSlice';
-import { loginSuccess } from '../store/slices/authSlice';
+import { loginUser } from '../store/slices/authSlice';
 import api from '../lib/axios';
 import { toast } from 'sonner';
 import { 
@@ -33,7 +33,7 @@ const roleConfigs = {
 };
 
 export const Login: React.FC = () => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
 
   const [selectedRole, setSelectedRole] = useState<UserRole>('Manager');
   const [email, setEmail] = useState(DEMO_USERS['Manager'].email);
@@ -68,43 +68,33 @@ export const Login: React.FC = () => {
     setIsLoading(true);
 
     try {
-      let response;
-      
       if (isLoginMode) {
-        response = await api.post('/auth/login', { email: email.trim(), password });
+        await dispatch(loginUser({ email: email.trim(), password })).unwrap();
+        toast.success('Welcome back!');
       } else {
-        response = await api.post('/auth/signup', {
+        const response = await api.post('/auth/signup', {
           email: email.trim(),
           password,
           name: name.trim(),
           role: BACKEND_ROLES[selectedRole],
         });
+
+        const { user, session } = response.data.data;
+        
+        if (rememberMe) {
+          localStorage.setItem('access_token', session.access_token);
+          if (session.refresh_token) localStorage.setItem('refresh_token', session.refresh_token);
+        } else {
+          sessionStorage.setItem('access_token', session.access_token);
+        }
+        toast.success('Account created successfully!');
       }
 
-      const { user, session } = response.data.data;
-      
-      if (rememberMe) {
-        localStorage.setItem('access_token', session.access_token);
-        if (session.refresh_token) localStorage.setItem('refresh_token', session.refresh_token);
-      } else {
-        sessionStorage.setItem('access_token', session.access_token);
-      }
-
-      dispatch(loginSuccess({
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name || name,
-          role: user.role || BACKEND_ROLES[selectedRole],
-          avatar: '',
-        },
-        scope: selectedRole === 'Driver' ? 'dispatcher' : 'fleet-manager',
-      }));
-
-      toast.success(`Welcome back, ${user.name || name}`);
       dispatch(setActiveTab('dashboard'));
     } catch (error: any) {
-      const message = error.response?.data?.message || 'Authentication failed. Please try again.';
+      const message = typeof error === 'string' 
+        ? error 
+        : error?.response?.data?.message || error?.message || 'Authentication failed. Please try again.';
       setFormError(message);
       toast.error(message);
     } finally {
@@ -119,7 +109,6 @@ export const Login: React.FC = () => {
     <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-zinc-950 dark:to-zinc-900 p-4 sm:p-6">
       <div className="w-full max-w-[440px]">
         
-        {/* Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#714B67] to-[#5a3b52] text-white shadow-lg shadow-[#714B67]/25 mb-4">
             <span className="text-2xl font-black tracking-tight">T</span>
@@ -128,10 +117,8 @@ export const Login: React.FC = () => {
           <p className="text-xs font-medium text-gray-500 dark:text-zinc-400 mt-1">Enterprise Fleet Command Suite</p>
         </div>
 
-        {/* Card */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-xl shadow-gray-200/50 dark:shadow-black/20 overflow-hidden">
           
-          {/* Role Selector */}
           <div className="p-5 pb-0">
             <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-3 text-center">
               Select Portal
@@ -162,7 +149,6 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {/* Role Banner */}
           <div className={`mx-5 mt-4 p-3 rounded-xl border text-xs font-semibold ${config.bg}`}>
             <div className="flex items-center gap-2">
               <IconComponent className="h-4 w-4 shrink-0" />
@@ -170,12 +156,10 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="p-5 pt-4 space-y-4">
             
-            {/* Error */}
             {formError && (
-              <div className="flex items-start gap-3 rounded-xl bg-red-50 dark:bg-red-950/30 p-3.5 border border-red-100 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs font-medium animate-shake">
+              <div className="flex items-start gap-3 rounded-xl bg-red-50 dark:bg-red-950/30 p-3.5 border border-red-100 dark:border-red-900/50 text-red-700 dark:text-red-300 text-xs font-medium">
                 <div className="h-5 w-5 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-red-600 dark:text-red-400 text-[10px] font-bold">!</span>
                 </div>
@@ -183,7 +167,6 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {/* Name (Signup) */}
             {!isLoginMode && (
               <div>
                 <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Full Name</label>
@@ -200,7 +183,6 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {/* Email */}
             <div>
               <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Email Address</label>
               <div className="relative">
@@ -215,7 +197,6 @@ export const Login: React.FC = () => {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-[11px] font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Password</label>
               <div className="relative">
@@ -237,7 +218,6 @@ export const Login: React.FC = () => {
               </div>
             </div>
 
-            {/* Options */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-zinc-400 cursor-pointer">
                 <input
@@ -257,7 +237,6 @@ export const Login: React.FC = () => {
               </button>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={isLoading}
@@ -275,7 +254,6 @@ export const Login: React.FC = () => {
             </button>
           </form>
 
-          {/* Footer */}
           <div className="border-t border-gray-100 dark:border-zinc-800 px-5 py-4 text-center">
             <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-medium">
               TransitOps Enterprise Edition v4.2
