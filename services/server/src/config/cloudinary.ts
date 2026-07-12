@@ -11,47 +11,60 @@ cloudinary.config({
 export const documentStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'TRANSITOPS-ODOO-DEVDAAS/documents',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'],
-    resource_type: 'auto',
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }],
-  },
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf', 'webp'] as any,
+    resource_type: 'auto' as any,
+    transformation: [{ quality: 'auto', fetch_format: 'auto' }] as any,
+    public_id: (_req: any, _file: any) => {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8);
+      return `transitops/documents/${timestamp}_${random}`;
+    },
+  } as any,
 });
 
 // Storage for vehicle images
 export const vehicleImageStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'TRANSITOPS-ODOO-DEVDAAS/vehicles',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'] as any,
     transformation: [
       { width: 800, height: 600, crop: 'fill', quality: 'auto' },
-    ],
-  },
+    ] as any,
+    public_id: (_req: any, _file: any) => {
+      const timestamp = Date.now();
+      return `transitops/vehicles/${timestamp}`;
+    },
+  } as any,
 });
 
 // Storage for receipts
 export const receiptStorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'TRANSITOPS-ODOO-DEVDAAS/receipts',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'],
-    resource_type: 'auto',
-  },
+    allowed_formats: ['jpg', 'jpeg', 'png', 'pdf'] as any,
+    resource_type: 'auto' as any,
+    public_id: (_req: any, _file: any) => {
+      const timestamp = Date.now();
+      return `transitops/receipts/${timestamp}`;
+    },
+  } as any,
 });
 
 export class CloudinaryService {
-  // Upload single file
-  static async uploadFile(file: Express.Multer.File, folder: string = 'TRANSITOPS-ODOO-DEVDAAS') {
+  static async uploadFile(file: Express.Multer.File, folder: string = 'transitops') {
     return new Promise((resolve, reject) => {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 8);
+      const publicId = `${folder}/${timestamp}_${random}`;
+
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder,
+          public_id: publicId,
           resource_type: 'auto',
           quality: 'auto',
           fetch_format: 'auto',
         },
-        (error, result) => {
+        (error: any, result: any) => {
           if (error) reject(error);
           else resolve(result);
         }
@@ -60,23 +73,19 @@ export class CloudinaryService {
     });
   }
 
-  // Upload multiple files
-  static async uploadMultiple(files: Express.Multer.File[], folder: string = 'TRANSITOPS-ODOO-DEVDAAS') {
+  static async uploadMultiple(files: Express.Multer.File[], folder: string = 'transitops') {
     const uploads = files.map(file => this.uploadFile(file, folder));
     return Promise.all(uploads);
   }
 
-  // Delete file
   static async deleteFile(publicId: string) {
     return cloudinary.uploader.destroy(publicId);
   }
 
-  // Delete multiple files
   static async deleteMultiple(publicIds: string[]) {
     return cloudinary.api.delete_resources(publicIds);
   }
 
-  // Generate optimized URL
   static getOptimizedUrl(publicId: string, options: {
     width?: number;
     height?: number;
@@ -94,7 +103,6 @@ export class CloudinaryService {
     });
   }
 
-  // Generate thumbnail
   static getThumbnail(publicId: string) {
     return cloudinary.url(publicId, {
       width: 200,
@@ -105,15 +113,13 @@ export class CloudinaryService {
     });
   }
 
-  // Generate signed URL (for private files)
   static getSignedUrl(publicId: string, expiresIn: number = 3600) {
     return cloudinary.utils.private_download_url(publicId, 'pdf', {
       resource_type: 'auto',
       expires_at: Math.floor(Date.now() / 1000) + expiresIn,
-    });
+    } as any);
   }
 
-  // Get resource info
   static async getResourceInfo(publicId: string) {
     return cloudinary.api.resource(publicId);
   }

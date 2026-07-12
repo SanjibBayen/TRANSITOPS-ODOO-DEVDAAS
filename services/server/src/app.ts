@@ -10,6 +10,7 @@ import { fuelRoutes } from './modules/fuel/fuel.routes';
 import { expenseRoutes } from './modules/expenses/expense.routes';
 import { analyticsRoutes } from './modules/analytics/analytics.routes';
 import { dispatchRoutes } from './modules/dispatch/dispatch.routes';
+import { documentRoutes } from './modules/documents/document.routes';
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use(`${API_PREFIX}/fuel`, fuelRoutes);
 app.use(`${API_PREFIX}/expenses`, expenseRoutes);
 app.use(`${API_PREFIX}/analytics`, analyticsRoutes);
 app.use(`${API_PREFIX}/dispatch`, dispatchRoutes);
+app.use(`${API_PREFIX}/documents`, documentRoutes);
 
 // 404 Handler
 app.use((req, res) => {
