@@ -1,58 +1,68 @@
 import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { updateVehicle } from '../store/slices/vehicleSlice.ts';
-import { updateTripStatusAPI } from '../store/slices/tripSlice.ts';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../store/index';
 import { toast } from 'sonner';
+import { socketService } from '../lib/socket';
 
 export const useWebSocket = () => {
-  const dispatch = useDispatch<any>();
+  const dispatch = useDispatch<AppDispatch>();
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    // We are integrating with a mock backend ws for now
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
-    let socket: WebSocket;
-    
-    const connect = () => {
-      try {
-        socket = new WebSocket(wsUrl);
+    if (!isAuthenticated) {
+      socketService.disconnect();
+      return;
+    }
 
-        socket.onopen = () => {
-          console.log('WebSocket Connected');
-        };
+    // Connect to WebSocket
+    const socket = socketService.connect();
 
-        socket.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            
-            if (data.type === 'VEHICLE_LOCATION_UPDATE') {
-              // Handle vehicle location update
-              // Usually handled by triggering a refetch or partial update
-            } else if (data.type === 'TRIP_STATUS_UPDATE') {
-              // Trigger a toast
-              toast.info(`Trip ${data.payload.tripId} status updated to ${data.payload.status}`);
-            } else if (data.type === 'ALERT') {
-              toast.warning(`Alert: ${data.payload.message}`);
-            }
-          } catch (e) {
-            console.error('Error parsing WS message', e);
-          }
-        };
+    // Vehicle updates
+    socketService.on('vehicle:updated', (data: any) => {
+      dispatch({ type: 'vehicles/setVehicleStatus', payload: { id: data.vehicleId, status: data.status } });
+    });
 
-        socket.onclose = () => {
-          console.log('WebSocket Disconnected. Reconnecting...');
-          setTimeout(connect, 3000);
-        };
-      } catch (err) {
-        console.error('WebSocket connection error:', err);
-      }
-    };
+    // Trip status updates
+    socketService.on('trip:updated', (data: any) => {
+      dispatch({ type: 'trips/updateTripStatus', payload: { id: data.tripId, status: data.status } });
+      toast.info(`Trip ${data.tripId} status: ${data.status}`);
+    });
 
-    connect();
+    // New dispatch assignments
+    socketService.on('dispatch:new-assignment', (data: any) => {
+      toast.info('New trip assigned!');
+    });
 
+    // Maintenance alerts
+    socketService.on('maintenance:alert', (data: any) => {
+      toast.warning(`Maintenance: ${data.type || 'Alert received'}`);
+    });
+
+    // Compliance warnings
+    socketService.on('compliance:warning', (data: any) => {
+      toast.warning(`Compliance: ${data.message || 'Warning received'}`);
+    });
+
+    // Dashboard refresh
+    socketService.on('dashboard:refresh', () => {
+      dispatch({ type: 'analytics/fetchDashboard' } as any);
+    });
+
+    // New notifications
+    socketService.on('notification:new', (data: any) => {
+      toast(data.title || 'Notification', { description: data.message });
+    });
+
+    // Cleanup on unmount or auth change
     return () => {
-      if (socket) {
-        socket.close();
-      }
+      socketService.off('vehicle:updated');
+      socketService.off('trip:updated');
+      socketService.off('dispatch:new-assignment');
+      socketService.off('maintenance:alert');
+      socketService.off('compliance:warning');
+      socketService.off('dashboard:refresh');
+      socketService.off('notification:new');
+      socketService.disconnect();
     };
-  }, [dispatch]);
+  }, [isAuthenticated, dispatch]);
 };
