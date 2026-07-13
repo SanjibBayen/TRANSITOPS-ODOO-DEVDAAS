@@ -1,15 +1,18 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import api from '../../lib/axios.ts';
+import api from '../../lib/axios';
+
+export type TripStatus = 'DRAFT' | 'DISPATCHED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 export interface Trip {
   id: string;
+  trip_number: string;
   vehicleName: string;
   vehicleRegNo: string;
   driverName: string;
   driverId: string;
-  status: 'Draft' | 'On Trip' | 'Completed' | 'Delayed' | 'Aborted' | string;
+  status: TripStatus;
   eta: string;
-  etaMinutes: number; // minutes remaining (e.g. 22)
+  etaMinutes: number;
   source: string;
   destination: string;
   currentLocation: string;
@@ -18,7 +21,9 @@ export interface Trip {
   fuelUsedLiters: number;
   expenseCost: number;
   startTime: string;
-  progressPercent: number; // e.g. 50%
+  progressPercent: number;
+  vehicle_id: string;
+  driver_id: string;
 }
 
 interface TripState {
@@ -33,71 +38,73 @@ const initialState: TripState = {
   error: null,
 };
 
-export const fetchTrips = createAsyncThunk('trips/fetchAll', async () => {
-  const response = await api.get('/trips');
-  return response.data.data.map((t: any) => ({
-    id: t.id,
-    vehicleName: t.vehicle?.name || t.vehicle?.model || 'Unknown Vehicle',
-    vehicleRegNo: t.vehicle?.registration_number || t.vehicle_id,
-    driverName: t.driver?.name || 'Unknown Driver',
-    driverId: t.driver_id,
-    status: t.status,
-    eta: t.eta || 'Unknown',
-    etaMinutes: t.etaMinutes || 0,
-    source: t.source,
-    destination: t.destination,
-    currentLocation: t.currentLocation || t.source,
-    cargoWeightKg: t.cargo_weight || t.cargoWeightKg || 0,
-    distanceKm: t.planned_distance || t.distanceKm || 0,
-    fuelUsedLiters: t.fuelUsedLiters || 0,
-    expenseCost: t.expenseCost || 0,
-    startTime: t.created_at || t.startTime || new Date().toISOString(),
-    progressPercent: t.progressPercent || 0,
-  }));
+// Map backend status to progress
+const statusProgress: Record<string, number> = {
+  DRAFT: 0,
+  DISPATCHED: 25,
+  IN_PROGRESS: 50,
+  COMPLETED: 100,
+  CANCELLED: 0,
+};
+
+// Map backend trip to frontend format
+const mapTrip = (t: any): Trip => ({
+  id: t.id,
+  trip_number: t.trip_number || '',
+  vehicleName: t.vehicle?.registration_number || t.vehicle?.model || 'Unknown',
+  vehicleRegNo: t.vehicle?.registration_number || t.vehicle_id,
+  driverName: t.driver?.name || 'Unknown',
+  driverId: t.driver_id,
+  status: t.status as TripStatus,
+  eta: t.eta || '--',
+  etaMinutes: t.etaMinutes || 0,
+  source: t.source,
+  destination: t.destination,
+  currentLocation: t.currentLocation || t.source,
+  cargoWeightKg: t.cargo_weight || 0,
+  distanceKm: t.planned_distance || 0,
+  fuelUsedLiters: 0,
+  expenseCost: 0,
+  startTime: t.actual_start_date || t.created_at || new Date().toISOString(),
+  progressPercent: statusProgress[t.status] || 0,
+  vehicle_id: t.vehicle_id,
+  driver_id: t.driver_id,
 });
 
-export const createTrip = createAsyncThunk('trips/create', async (data: any) => {
-  const response = await api.post('/trips', data);
-  const t = response.data.data;
-  return {
-    id: t.id,
-    vehicleName: t.vehicle?.name || t.vehicle?.model || 'Unknown Vehicle',
-    vehicleRegNo: t.vehicle?.registration_number || t.vehicle_id,
-    driverName: t.driver?.name || 'Unknown Driver',
-    driverId: t.driver_id,
-    status: t.status || 'Draft',
-    eta: t.eta || 'Unknown',
-    etaMinutes: t.etaMinutes || 0,
-    source: t.source,
-    destination: t.destination,
-    currentLocation: t.currentLocation || t.source,
-    cargoWeightKg: t.cargo_weight || t.cargoWeightKg || 0,
-    distanceKm: t.planned_distance || t.distanceKm || 0,
-    fuelUsedLiters: t.fuelUsedLiters || 0,
-    expenseCost: t.expenseCost || 0,
-    startTime: t.created_at || t.startTime || new Date().toISOString(),
-    progressPercent: t.progressPercent || 0,
-  };
+export const fetchTrips = createAsyncThunk('trips/fetchAll', async (_, { rejectWithValue }) => {
+  try {
+    const response = await api.get('/trips');
+    return (response.data.data || []).map(mapTrip);
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch trips');
+  }
 });
 
-export const updateTripStatusAPI = createAsyncThunk('trips/updateStatus', async ({ id, status }: any) => {
-  const response = await api.patch(`/trips/${id}/status`, { status });
-  const t = response.data.data;
-  return {
-    id: t.id || id,
-    status: t.status || status,
-    progressPercent: status === 'COMPLETED' ? 100 : (status === 'IN_PROGRESS' || status === 'ON_TRIP' || status === 'On Trip' ? 50 : 0),
-  };
+export const createTrip = createAsyncThunk('trips/create', async (data: any, { rejectWithValue }) => {
+  try {
+    const response = await api.post('/trips', data);
+    return mapTrip(response.data.data);
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to create trip');
+  }
 });
 
-export const completeTripAPI = createAsyncThunk('trips/complete', async ({ id, data }: any) => {
-  const response = await api.patch(`/trips/${id}/complete`, data);
-  const t = response.data.data;
-  return {
-    id: t.id || id,
-    status: t.status || 'Completed',
-    progressPercent: 100,
-  };
+export const updateTripStatusAPI = createAsyncThunk('trips/updateStatus', async ({ id, status }: { id: string; status: string }, { rejectWithValue }) => {
+  try {
+    const response = await api.patch(`/trips/${id}/status`, { status });
+    return { id, status, progressPercent: statusProgress[status] || 0 };
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to update status');
+  }
+});
+
+export const completeTripAPI = createAsyncThunk('trips/complete', async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
+  try {
+    const response = await api.patch(`/trips/${id}/complete`, data);
+    return { id, status: 'COMPLETED', progressPercent: 100 };
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to complete trip');
+  }
 });
 
 export const tripSlice = createSlice({
@@ -107,18 +114,6 @@ export const tripSlice = createSlice({
     addTrip: (state, action: PayloadAction<Trip>) => {
       state.trips.unshift(action.payload);
     },
-    updateTripStatus: (state, action: PayloadAction<{ id: string; status: Trip['status']; currentLocation?: string; progressPercent?: number }>) => {
-      const trip = state.trips.find(t => t.id === action.payload.id);
-      if (trip) {
-        trip.status = action.payload.status;
-        if (action.payload.currentLocation !== undefined) {
-          trip.currentLocation = action.payload.currentLocation;
-        }
-        if (action.payload.progressPercent !== undefined) {
-          trip.progressPercent = action.payload.progressPercent;
-        }
-      }
-    },
     deleteTrip: (state, action: PayloadAction<string>) => {
       state.trips = state.trips.filter(t => t.id !== action.payload);
     },
@@ -126,33 +121,25 @@ export const tripSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchTrips.pending, (state) => { state.isLoading = true; state.error = null; })
-      .addCase(fetchTrips.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.trips = action.payload;
-      })
-      .addCase(fetchTrips.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch trips';
-      })
-      .addCase(createTrip.fulfilled, (state, action) => {
-        state.trips.unshift(action.payload);
-      })
+      .addCase(fetchTrips.fulfilled, (state, action) => { state.isLoading = false; state.trips = action.payload; })
+      .addCase(fetchTrips.rejected, (state, action) => { state.isLoading = false; state.error = action.payload as string; })
+      .addCase(createTrip.fulfilled, (state, action) => { state.trips.unshift(action.payload); })
       .addCase(updateTripStatusAPI.fulfilled, (state, action) => {
         const trip = state.trips.find(t => t.id === action.payload.id);
         if (trip) {
-          trip.status = action.payload.status;
+          trip.status = action.payload.status as TripStatus;
           trip.progressPercent = action.payload.progressPercent;
         }
       })
       .addCase(completeTripAPI.fulfilled, (state, action) => {
         const trip = state.trips.find(t => t.id === action.payload.id);
         if (trip) {
-          trip.status = action.payload.status;
-          trip.progressPercent = action.payload.progressPercent;
+          trip.status = 'COMPLETED';
+          trip.progressPercent = 100;
         }
       });
   },
 });
 
-export const { addTrip, updateTripStatus, deleteTrip } = tripSlice.actions;
+export const { addTrip, deleteTrip } = tripSlice.actions;
 export default tripSlice.reducer;

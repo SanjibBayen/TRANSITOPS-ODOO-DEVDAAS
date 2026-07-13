@@ -1,10 +1,16 @@
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer from './slices/authSlice.ts';
-import vehicleReducer from './slices/vehicleSlice.ts';
-import driverReducer from './slices/driverSlice.ts';
-import tripReducer from './slices/tripSlice.ts';
-import uiReducer from './slices/uiSlice.ts';
-import expenseReducer from './slices/expenseSlice.ts';
+import authReducer from './slices/authSlice';
+import vehicleReducer from './slices/vehicleSlice';
+import driverReducer from './slices/driverSlice';
+import tripReducer from './slices/tripSlice';
+import uiReducer from './slices/uiSlice';
+import expenseReducer from './slices/expenseSlice';
+import maintenanceReducer from './slices/maintenanceSlice';
+import fuelReducer from './slices/fuelSlice';
+import analyticsReducer from './slices/analyticsSlice';
+import dispatchReducer from './slices/dispatchSlice';
+import documentReducer from './slices/documentSlice';
+import notificationReducer from './slices/notificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,6 +20,12 @@ export const store = configureStore({
     trips: tripReducer,
     ui: uiReducer,
     expenses: expenseReducer,
+    maintenance: maintenanceReducer,
+    fuel: fuelReducer,
+    analytics: analyticsReducer,
+    dispatch: dispatchReducer,
+    documents: documentReducer,
+    notifications: notificationReducer,
   },
 });
 

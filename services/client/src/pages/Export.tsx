@@ -1,241 +1,227 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { addToast } from '../store/slices/uiSlice.ts';
-import { Download, Calendar, Filter, Database, FileText, CheckCircle2, RefreshCw } from 'lucide-react';
-import { RootState } from '../store/index.ts';
+import { toast } from 'sonner';
+import { RootState } from '../store/index';
+import { Download, Calendar, Database, FileText, RefreshCw, FileSpreadsheet, FileDown, AlertCircle } from 'lucide-react';
+import api from '../lib/axios';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const Export: React.FC = () => {
-  const dispatch = useDispatch();
-
-  const expenses = useSelector((state: RootState) => state.expenses.expenses);
-  const trips = useSelector((state: RootState) => state.trips.trips);
+  const { user } = useSelector((state: RootState) => state.auth);
   
-  const [dateRange, setDateRange] = useState('This Month');
-  const [exportTarget, setExportTarget] = useState('All Expenses');
-  const [exportFormat, setExportFormat] = useState('CSV');
+  const [dateRange, setDateRange] = useState('this-month');
+  const [exportType, setExportType] = useState('vehicles');
+  const [exportFormat, setExportFormat] = useState<'CSV' | 'PDF'>('CSV');
   const [isExporting, setIsExporting] = useState(false);
+  const [stats, setStats] = useState({ vehicles: 0, trips: 0, expenses: 0, drivers: 0 });
 
-  const targets = ['All Expenses', 'Fuel Records Only', 'Toll Logs Only', 'Maintenance Ledger Only', 'Active Trips Records'];
-  const ranges = ['Today', 'This Week', 'This Month', 'This Quarter', 'Custom Range (FY 25-26)'];
+  const exportOptions = [
+    { id: 'vehicles', label: 'Vehicles Registry', icon: '🚛' },
+    { id: 'drivers', label: 'Drivers Registry', icon: '👨‍✈️' },
+    { id: 'trips', label: 'Trips Report', icon: '🗺️' },
+    { id: 'expenses', label: 'Expenses Ledger', icon: '💰' },
+  ];
 
-  const handleExport = () => {
+  const dateOptions = [
+    { id: 'today', label: 'Today' },
+    { id: 'this-week', label: 'This Week' },
+    { id: 'this-month', label: 'This Month' },
+    { id: 'this-quarter', label: 'This Quarter' },
+    { id: 'all-time', label: 'All Time' },
+  ];
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const [vehiclesRes, driversRes, tripsRes, expensesRes] = await Promise.all([
+        api.get('/vehicles'),
+        api.get('/drivers'),
+        api.get('/trips'),
+        api.get('/expenses'),
+      ]);
+      setStats({
+        vehicles: vehiclesRes.data.data?.length || 0,
+        drivers: driversRes.data.data?.length || 0,
+        trips: tripsRes.data.data?.length || 0,
+        expenses: expensesRes.data.data?.length || 0,
+      });
+    } catch {
+      // Stats are optional
+    }
+  };
+
+  const exportCSV = async () => {
+    try {
+      let endpoint = '';
+      switch (exportType) {
+        case 'vehicles': endpoint = '/analytics/export/vehicles/csv'; break;
+        case 'trips': endpoint = '/analytics/export/trips/csv'; break;
+        default: endpoint = `/${exportType}`;
+      }
+
+      if (endpoint.includes('analytics/export')) {
+        window.open(`${api.defaults.baseURL}${endpoint}?range=${dateRange}`, '_blank');
+      } else {
+        const response = await api.get(endpoint, { params: { range: dateRange } });
+        const data = response.data.data || response.data;
+        downloadCSV(data, `${exportType}-${dateRange}.csv`);
+      }
+      
+      toast.success(`${exportOptions.find(o => o.id === exportType)?.label} exported successfully`);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Export failed');
+    }
+  };
+
+  const exportPDF = async () => {
+    try {
+      if (exportType === 'vehicles') {
+        window.open(`${api.defaults.baseURL}/analytics/export/vehicles/pdf`, '_blank');
+      } else if (exportType === 'trips') {
+        window.open(`${api.defaults.baseURL}/analytics/export/trips/pdf`, '_blank');
+      } else {
+        // Generate client-side PDF for other types
+        const response = await api.get(`/${exportType}`, { params: { range: dateRange } });
+        const data = response.data.data || [];
+        generateClientPDF(data, exportType);
+      }
+      toast.success('PDF report generated');
+    } catch (err: any) {
+      toast.error('PDF generation failed');
+    }
+  };
+
+  const downloadCSV = (data: any[], filename: string) => {
+    if (!data.length) return;
+    const headers = Object.keys(data[0]);
+    const csv = [
+      headers.join(','),
+      ...data.map((row: any) => headers.map(h => `"${row[h] || ''}"`).join(',')),
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const generateClientPDF = (data: any[], type: string) => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text(`TransitOps - ${type.charAt(0).toUpperCase() + type.slice(1)} Report`, 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generated: ${new Date().toLocaleString()} | Period: ${dateRange}`, 14, 28);
+
+    if (data.length > 0) {
+      const headers = Object.keys(data[0]);
+      const rows = data.map((row: any) => headers.map(h => String(row[h] || '')));
+      autoTable(doc, { startY: 35, head: [headers], body: rows });
+    }
+
+    doc.save(`${type}-${dateRange}.pdf`);
+    toast.success('PDF downloaded');
+  };
+
+  const handleExport = async () => {
     setIsExporting(true);
-
-    setTimeout(() => {
-      let data: any[] = [];
-      let columns: string[] = [];
-      let filename = `${exportTarget.replace(/ /g, '_')}_${dateRange.replace(/ /g, '_')}`;
-
-      if (exportTarget === 'Active Trips Records') {
-        columns = ['Trip ID', 'Vehicle', 'Driver', 'Status', 'Start Time', 'Route'];
-        data = trips.filter(t => t.status !== 'Completed' && t.status !== 'Draft').map(t => [
-          t.id, t.vehicleName, t.driverName, t.status, new Date(t.startTime).toLocaleDateString(), `${t.source} -> ${t.destination}`
-        ]);
-      } else {
-        // Expenses logic
-        let filteredExpenses = expenses;
-        if (exportTarget === 'Fuel Records Only') {
-          filteredExpenses = expenses.filter(e => e.type === 'Fuel');
-        } else if (exportTarget === 'Toll Logs Only') {
-          filteredExpenses = expenses.filter(e => e.type === 'Toll');
-        } else if (exportTarget === 'Maintenance Ledger Only') {
-          filteredExpenses = expenses.filter(e => e.type === 'Maintenance');
-        }
-
-        columns = ['Date', 'Type', 'Amount', 'Vehicle/Trip', 'Description'];
-        data = filteredExpenses.map(e => [
-          e.date,
-          e.type,
-          `$${e.amount.toFixed(2)}`,
-          e.vehicleId || e.tripId || 'N/A',
-          e.description || 'N/A'
-        ]);
-      }
-
-      if (exportFormat === 'PDF') {
-        const doc = new jsPDF();
-        doc.setFontSize(18);
-        doc.text(`TransitOps - ${exportTarget}`, 14, 22);
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        doc.text(`Period: ${dateRange}`, 14, 30);
-        
-        autoTable(doc, {
-          startY: 36,
-          head: [columns],
-          body: data,
-        });
-        
-        doc.save(`${filename}.pdf`);
-      } else if (exportFormat === 'CSV') {
-        const csvContent = [
-          columns.join(','),
-          ...data.map(row => row.map((cell: any) => `"${cell}"`).join(','))
-        ].join('\n');
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `${filename}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // Fallback for XLSX simulation
-        dispatch(addToast({
-          type: 'error',
-          title: 'Format Not Supported',
-          message: `XLSX export requires an additional library.`
-        }));
-        setIsExporting(false);
-        return;
-      }
-
+    try {
+      if (exportFormat === 'CSV') await exportCSV();
+      else await exportPDF();
+    } finally {
       setIsExporting(false);
-      dispatch(addToast({
-        type: 'success',
-        title: 'Export Generated',
-        message: `Successfully formatted and downloaded ${exportTarget} in .${exportFormat.toLowerCase()} structure.`
-      }));
-    }, 1200);
+    }
+  };
+
+  const statMap: Record<string, number> = {
+    vehicles: stats.vehicles,
+    drivers: stats.drivers,
+    trips: stats.trips,
+    expenses: stats.expenses,
   };
 
   return (
-    <div className="space-y-6 max-w-[1200px] mx-auto animate-fade-in font-sans text-gray-800 dark:text-zinc-200">
-      
-      {/* Title Header */}
+    <div className="space-y-6 max-w-[1200px] mx-auto">
       <div>
-        <h1 className="text-2xl font-black text-gray-900 dark:text-zinc-100 tracking-tight">
-          Financial Ledger Data Export
-        </h1>
-        <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400">
-          Query, filter, and extract pristine financial reports including detailed fuel costs, toll fees, maintenance budgets, and trip revenues.
-        </p>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-zinc-100 tracking-tight">Data Export</h1>
+        <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400">Export fleet data in CSV or PDF format for reporting and compliance.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Export Form */}
-        <div className="md:col-span-2 bg-white dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800 p-6 shadow-xs space-y-6">
-          <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-100 border-b border-gray-100 dark:border-zinc-800 pb-2">
-            Configure Ledger Query Parameters
-          </h2>
+        <div className="md:col-span-2 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-6 space-y-6">
+          <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-100 border-b border-gray-100 dark:border-zinc-800 pb-2">Export Configuration</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            
-            {/* Target Select */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">
-                1. Select Data Sub-ledger
-              </label>
-              <select
-                value={exportTarget}
-                onChange={e => setExportTarget(e.target.value)}
-                className="w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-gray-800 dark:text-zinc-200 focus:outline-none focus:border-[#714B67] transition-all font-semibold"
-              >
-                {targets.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
+              <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase">Data Type</label>
+              <select value={exportType} onChange={e => setExportType(e.target.value)} className="w-full rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-semibold focus:border-[#714B67] focus:outline-none">
+                {exportOptions.map(o => <option key={o.id} value={o.id}>{o.icon} {o.label} ({statMap[o.id] || 0} records)</option>)}
               </select>
             </div>
 
-            {/* Date Range Select */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">
-                2. Select Date Period
-              </label>
-              <select
-                value={dateRange}
-                onChange={e => setDateRange(e.target.value)}
-                className="w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs text-gray-800 dark:text-zinc-200 focus:outline-none focus:border-[#714B67] transition-all font-semibold"
-              >
-                {ranges.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
+              <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase">Date Range</label>
+              <select value={dateRange} onChange={e => setDateRange(e.target.value)} className="w-full rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-xs font-semibold focus:border-[#714B67] focus:outline-none">
+                {dateOptions.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
               </select>
             </div>
 
-            {/* Format Picker */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wide">
-                3. File Format
-              </label>
+              <label className="block text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase">Format</label>
               <div className="flex gap-2">
-                {['CSV', 'XLSX', 'PDF'].map(fmt => (
-                  <button
-                    key={fmt}
-                    type="button"
-                    onClick={() => setExportFormat(fmt)}
-                    className={`flex-1 py-2 text-xs font-bold rounded border cursor-pointer transition-all ${
-                      exportFormat === fmt
-                        ? 'bg-[#714B67] text-white border-[#714B67] shadow-xs'
-                        : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800 dark:bg-zinc-900/50 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    .{fmt.toLowerCase()}
+                {(['CSV', 'PDF'] as const).map(fmt => (
+                  <button key={fmt} onClick={() => setExportFormat(fmt)} className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                    exportFormat === fmt ? 'bg-[#714B67] text-white border-[#714B67]' : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800'
+                  }`}>
+                    {fmt === 'CSV' ? <FileSpreadsheet className="h-4 w-4 inline mr-1" /> : <FileDown className="h-4 w-4 inline mr-1" />}
+                    {fmt}
                   </button>
                 ))}
               </div>
             </div>
-
           </div>
 
           <div className="pt-4 border-t border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <div className="flex items-center gap-2 text-[10px] text-gray-400 font-bold uppercase">
               <Database className="h-4 w-4 text-[#714B67]" />
-              Includes real-time webhook sync entries
+              Connected to live database
             </div>
-
-            <button
-              onClick={handleExport}
-              disabled={isExporting}
-              className="px-5 py-2.5 bg-[#714B67] text-white font-bold rounded text-xs hover:bg-[#5e3b56] transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
-            >
-              {isExporting ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Generating Ledger...
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Export to .{exportFormat.toLowerCase()}
-                </>
-              )}
+            <button onClick={handleExport} disabled={isExporting} className="px-5 py-2.5 bg-[#714B67] text-white font-bold rounded-xl text-xs hover:bg-[#5e3b56] transition-all flex items-center gap-2 disabled:opacity-50">
+              {isExporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {isExporting ? 'Generating...' : `Export ${exportFormat}`}
             </button>
           </div>
         </div>
 
-        {/* Sidebar Info */}
-        <div className="md:col-span-1 bg-white dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800 p-6 shadow-xs space-y-4">
-          <h3 className="text-xs font-extrabold text-[#714B67] dark:text-purple-300 uppercase tracking-wider">
-            Enterprise Compliance Notice
-          </h3>
-          <p className="text-[11px] text-gray-500 dark:text-zinc-400 leading-relaxed font-semibold">
-            By downloading these financial ledgers, you certify that you have the appropriate clearance to view confidential company expenditure data. All export transactions are logged with your user identifier for auditing compliance purposes.
-          </p>
-
-          <div className="border-t border-gray-100 dark:border-zinc-800 pt-4 space-y-2.5 text-[11px]">
-            <div className="flex items-center gap-2 text-gray-600 dark:text-zinc-400">
-              <FileText className="h-4 w-4 text-gray-400" />
-              <span>Includes fuel expenses logs (6 records)</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600 dark:text-zinc-400">
-              <FileText className="h-4 w-4 text-gray-400" />
-              <span>Includes tolls expenses (14 items)</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600 dark:text-zinc-400">
-              <FileText className="h-4 w-4 text-gray-400" />
-              <span>Includes active maintenance tasks</span>
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 p-6 space-y-4">
+          <h3 className="text-xs font-extrabold text-[#714B67] dark:text-purple-300 uppercase tracking-wider">Database Summary</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'Vehicles', count: stats.vehicles, icon: '🚛' },
+              { label: 'Drivers', count: stats.drivers, icon: '👨‍✈️' },
+              { label: 'Trips', count: stats.trips, icon: '🗺️' },
+              { label: 'Expenses', count: stats.expenses, icon: '💰' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between text-xs">
+                <span className="text-gray-600 dark:text-zinc-400">{item.icon} {item.label}</span>
+                <span className="font-bold text-gray-900 dark:text-zinc-100">{item.count} records</span>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-gray-100 dark:border-zinc-800 pt-4">
+            <div className="flex items-start gap-2 text-[11px] text-gray-400">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>All exports are logged for audit compliance. Downloaded files contain current database state.</span>
             </div>
           </div>
         </div>
-
       </div>
-
     </div>
   );
 };

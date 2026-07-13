@@ -15,9 +15,9 @@ export interface SystemAlert {
 
 export type ActiveTab = 
   | 'dashboard' | 'fleet' | 'drivers' | 'trips' | 'dispatch'
-  | 'maintenance' | 'fuel' | 'analytics' | 'reports'
-  | 'settings' | 'support' | 'profile' | 'compliance' 
-  | 'license-expiry' | 'export' | 'documents';
+  | 'maintenance' | 'fuel' | 'expenses' | 'analytics' | 'reports'
+  | 'documents' | 'notifications' | 'compliance' | 'license-expiry'
+  | 'export' | 'settings' | 'support' | 'profile';
 
 interface UiState {
   activeTab: ActiveTab;

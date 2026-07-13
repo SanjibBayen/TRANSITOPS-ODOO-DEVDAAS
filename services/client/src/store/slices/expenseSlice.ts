@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import api from '../../lib/axios.ts';
+import api from '../../lib/axios';
 
 export interface FuelLog {
   id: string;
@@ -24,7 +24,7 @@ export interface TollExpense {
 
 export interface MaintenanceExpense {
   id: string;
-  maintenanceId: string; // Connected to a Maintenance record
+  maintenanceId: string;
   vehicleId: string;
   vendor: string;
   category: string;
@@ -49,94 +49,112 @@ const initialState: ExpenseState = {
   error: null
 };
 
-export const fetchExpenses = createAsyncThunk('expenses/fetchAll', async () => {
-  const response = await api.get('/expenses');
-  const expenses = response.data.data;
-  return {
-    maintenanceExpenses: expenses.filter((e: any) => e.type === 'MAINTENANCE').map((e: any) => ({
-      id: e.id,
-      maintenanceId: e.trip_id || e.id,
-      vehicleId: e.vehicle_id,
-      vendor: 'Unknown Vendor',
-      category: e.type,
-      amount: e.amount,
-      date: e.created_at,
-      notes: e.description || '',
-    })),
-    tollExpenses: expenses.filter((e: any) => e.type === 'TOLL').map((e: any) => ({
-      id: e.id,
-      tripId: e.trip_id,
-      vehicleId: e.vehicle_id,
-      amount: e.amount,
-      tollBooth: 'Unknown Booth',
-      date: e.created_at,
-      notes: e.description || '',
-    })),
-  };
+export const fetchExpenses = createAsyncThunk('expenses/fetchAll', async (_, { rejectWithValue }) => {
+  try {
+    const response = await api.get('/expenses');
+    const expenses = response.data.data || [];
+    return {
+      maintenanceExpenses: expenses
+        .filter((e: any) => e.type === 'MAINTENANCE')
+        .map((e: any) => ({
+          id: e.id,
+          maintenanceId: e.trip_id || e.id,
+          vehicleId: e.vehicle_id,
+          vendor: e.service_center || 'Unknown Vendor',
+          category: e.type,
+          amount: e.amount,
+          date: e.date || e.created_at,
+          notes: e.description || '',
+        })),
+      tollExpenses: expenses
+        .filter((e: any) => e.type === 'TOLL')
+        .map((e: any) => ({
+          id: e.id,
+          tripId: e.trip_id,
+          vehicleId: e.vehicle_id,
+          amount: e.amount,
+          tollBooth: e.description || 'Unknown Booth',
+          date: e.date || e.created_at,
+          notes: e.description || '',
+        })),
+    };
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch expenses');
+  }
 });
 
-export const createExpense = createAsyncThunk('expenses/create', async (data: any) => {
-  const response = await api.post('/expenses', data);
-  const e = response.data.data;
-  if (e.type === 'MAINTENANCE') {
+export const createExpense = createAsyncThunk('expenses/create', async (data: any, { rejectWithValue }) => {
+  try {
+    const response = await api.post('/expenses', data);
+    const e = response.data.data;
+    if (e.type === 'MAINTENANCE') {
+      return {
+        type: 'MAINTENANCE' as const,
+        data: {
+          id: e.id,
+          maintenanceId: e.trip_id || e.id,
+          vehicleId: e.vehicle_id,
+          vendor: e.service_center || 'Unknown Vendor',
+          category: e.type,
+          amount: e.amount,
+          date: e.date || e.created_at,
+          notes: e.description || '',
+        }
+      };
+    }
     return {
-      type: 'MAINTENANCE',
-      data: {
-        id: e.id,
-        maintenanceId: e.trip_id || e.id,
-        vehicleId: e.vehicle_id,
-        vendor: 'Unknown Vendor',
-        category: e.type,
-        amount: e.amount,
-        date: e.created_at,
-        notes: e.description || '',
-      }
-    };
-  } else {
-    return {
-      type: 'TOLL',
+      type: 'TOLL' as const,
       data: {
         id: e.id,
         tripId: e.trip_id,
         vehicleId: e.vehicle_id,
         amount: e.amount,
-        tollBooth: 'Unknown Booth',
-        date: e.created_at,
+        tollBooth: e.description || 'Unknown Booth',
+        date: e.date || e.created_at,
         notes: e.description || '',
       }
     };
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to create expense');
   }
 });
 
-export const fetchFuelLogs = createAsyncThunk('expenses/fetchFuel', async () => {
-  const response = await api.get('/fuel');
-  return response.data.data.map((f: any) => ({
-    id: f.id,
-    vehicleId: f.vehicle_id,
-    vehicleName: f.vehicle?.name || f.vehicle?.model || 'Unknown',
-    liters: f.liters,
-    cost: f.cost,
-    date: f.created_at,
-    vendor: f.station || 'Unknown',
-    fuelType: 'Diesel',
-  }));
+export const fetchFuelLogs = createAsyncThunk('expenses/fetchFuel', async (_, { rejectWithValue }) => {
+  try {
+    const response = await api.get('/fuel');
+    return (response.data.data || []).map((f: any) => ({
+      id: f.id,
+      vehicleId: f.vehicle_id,
+      vehicleName: f.vehicle?.registration_number || f.vehicle?.model || 'Unknown',
+      liters: f.liters,
+      cost: f.cost,
+      date: f.date || f.created_at,
+      vendor: f.station || 'Unknown',
+      fuelType: f.fuel_type || 'Diesel',
+    }));
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to fetch fuel logs');
+  }
 });
 
-export const createFuelLog = createAsyncThunk('expenses/createFuel', async (data: any) => {
-  const response = await api.post('/fuel', data);
-  const f = response.data.data;
-  return {
-    id: f.id,
-    vehicleId: f.vehicle_id,
-    vehicleName: f.vehicle?.name || f.vehicle?.model || 'Unknown',
-    liters: f.liters,
-    cost: f.cost,
-    date: f.created_at,
-    vendor: f.station || 'Unknown',
-    fuelType: 'Diesel',
-  };
+export const createFuelLog = createAsyncThunk('expenses/createFuel', async (data: any, { rejectWithValue }) => {
+  try {
+    const response = await api.post('/fuel', data);
+    const f = response.data.data;
+    return {
+      id: f.id,
+      vehicleId: f.vehicle_id,
+      vehicleName: f.vehicle?.registration_number || f.vehicle?.model || 'Unknown',
+      liters: f.liters,
+      cost: f.cost,
+      date: f.date || f.created_at,
+      vendor: f.station || 'Unknown',
+      fuelType: f.fuel_type || 'Diesel',
+    };
+  } catch (error: any) {
+    return rejectWithValue(error.response?.data?.message || 'Failed to create fuel log');
+  }
 });
-
 
 export const expenseSlice = createSlice({
   name: 'expenses',
@@ -148,35 +166,23 @@ export const expenseSlice = createSlice({
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
-    
-    // Fuel Log Reducers
     updateFuelLog: (state, action: PayloadAction<FuelLog>) => {
       const index = state.fuelLogs.findIndex(f => f.id === action.payload.id);
-      if (index !== -1) {
-        state.fuelLogs[index] = action.payload;
-      }
+      if (index !== -1) state.fuelLogs[index] = action.payload;
     },
     deleteFuelLog: (state, action: PayloadAction<string>) => {
       state.fuelLogs = state.fuelLogs.filter(f => f.id !== action.payload);
     },
-
-    // Toll Expense Reducers
     updateTollExpense: (state, action: PayloadAction<TollExpense>) => {
       const index = state.tollExpenses.findIndex(t => t.id === action.payload.id);
-      if (index !== -1) {
-        state.tollExpenses[index] = action.payload;
-      }
+      if (index !== -1) state.tollExpenses[index] = action.payload;
     },
     deleteTollExpense: (state, action: PayloadAction<string>) => {
       state.tollExpenses = state.tollExpenses.filter(t => t.id !== action.payload);
     },
-
-    // Maintenance Expense Reducers
     updateMaintenanceExpense: (state, action: PayloadAction<MaintenanceExpense>) => {
       const index = state.maintenanceExpenses.findIndex(m => m.id === action.payload.id);
-      if (index !== -1) {
-        state.maintenanceExpenses[index] = action.payload;
-      }
+      if (index !== -1) state.maintenanceExpenses[index] = action.payload;
     },
     deleteMaintenanceExpense: (state, action: PayloadAction<string>) => {
       state.maintenanceExpenses = state.maintenanceExpenses.filter(m => m.id !== action.payload);
@@ -192,23 +198,23 @@ export const expenseSlice = createSlice({
       })
       .addCase(fetchExpenses.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch expenses';
+        state.error = action.payload as string || 'Failed to fetch expenses';
       })
       .addCase(createExpense.fulfilled, (state, action) => {
         if (action.payload.type === 'MAINTENANCE') {
-          state.maintenanceExpenses.unshift(action.payload.data as MaintenanceExpense);
+          state.maintenanceExpenses.unshift(action.payload.data);
         } else {
-          state.tollExpenses.unshift(action.payload.data as TollExpense);
+          state.tollExpenses.unshift(action.payload.data);
         }
       })
-      .addCase(fetchFuelLogs.pending, (state) => { state.isLoading = true; state.error = null; })
+      .addCase(fetchFuelLogs.pending, (state) => { state.isLoading = true; })
       .addCase(fetchFuelLogs.fulfilled, (state, action) => {
         state.isLoading = false;
         state.fuelLogs = action.payload;
       })
       .addCase(fetchFuelLogs.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch fuel logs';
+        state.error = action.payload as string || 'Failed to fetch fuel logs';
       })
       .addCase(createFuelLog.fulfilled, (state, action) => {
         state.fuelLogs.unshift(action.payload);
@@ -217,14 +223,10 @@ export const expenseSlice = createSlice({
 });
 
 export const {
-  setLoading,
-  setError,
-  updateFuelLog,
-  deleteFuelLog,
-  updateTollExpense,
-  deleteTollExpense,
-  updateMaintenanceExpense,
-  deleteMaintenanceExpense
+  setLoading, setError,
+  updateFuelLog, deleteFuelLog,
+  updateTollExpense, deleteTollExpense,
+  updateMaintenanceExpense, deleteMaintenanceExpense
 } = expenseSlice.actions;
 
 export default expenseSlice.reducer;

@@ -1,6 +1,6 @@
 {
   "name": "TransitOps",
-  "description": "Enterprise Fleet Management & Transport Operations Platform",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "description": "Enterprise Fleet Management & Transport Operations Platform"
+
+  
 }
