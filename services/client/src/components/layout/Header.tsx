@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../store';
+import { updateProfile } from '../../store/slices/authSlice';
 import { Search, Bell, Grid, Menu, LogOut, User, Edit2, X, Check, Sun, Moon } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebar, setSearchQuery } from '../../store/slices/uiSlice';
-import { RootState } from '../../store/index';
 import { useTheme } from '../../contexts/ThemeContext';
 import { toast } from 'sonner';
 import api from '../../lib/axios';
@@ -13,11 +13,10 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
-  const { user, handleUpdateProfile } = useAuth();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
   const { theme, setTheme } = useTheme();
   const searchQuery = useSelector((state: RootState) => state.ui.searchQuery);
-  const alerts = useSelector((state: RootState) => state.ui.alerts);
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -26,11 +25,10 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
 
-  // Fetch unread notification count
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        const response = await api.get('/users/' + user?.id + '/notifications');
+        const response = await api.get(`/users/${user?.id}/notifications`);
         const unread = response.data.data?.filter((n: any) => !n.is_read).length || 0;
         setNotificationCount(unread);
       } catch {
@@ -39,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
     };
     if (user?.id) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 60000); // Every minute
+      const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
     }
   }, [user?.id]);
@@ -52,25 +50,25 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
     if (user) {
       setEditName(user.name || '');
       setEditEmail(user.email || '');
-      setEditPhone('');
+      setEditPhone((user as any).phone || '');
       setIsEditModalOpen(true);
       setIsDropdownOpen(false);
     }
   };
 
-  const saveProfile = async (e: React.FormEvent) => {
+  const saveProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    handleUpdateProfile({ name: editName, email: editEmail });
+    dispatch(updateProfile({ name: editName, email: editEmail }));
     toast.success('Profile updated');
     setIsEditModalOpen(false);
   };
 
-  const roleLabel = {
+  const roleLabel: Record<string, string> = {
     FLEET_MANAGER: 'Fleet Manager',
     DRIVER: 'Driver',
     SAFETY_OFFICER: 'Safety Officer',
     FINANCIAL_ANALYST: 'Financial Analyst',
-  }[user?.role || ''] || user?.role || 'User';
+  };
 
   return (
     <>
@@ -101,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
             placeholder="Search records, drivers, trips..."
             className="block w-full rounded border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 py-1.5 pl-9 pr-12 text-sm text-gray-900 dark:text-zinc-100 placeholder-gray-400 dark:placeholder-zinc-500 focus:border-[#714B67] focus:ring-1 focus:ring-[#714B67] focus:outline-none transition-all"
           />
-          <kbd className="absolute right-3 top-2 rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-1.5 font-mono text-[10px] text-gray-400 dark:text-zinc-500">⌘K</kbd>
+          <kbd className="absolute right-3 top-2 rounded border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-1.5 font-mono text-[10px] text-gray-400 dark:text-zinc-500">Ctrl+K</kbd>
         </div>
 
         <div className="flex items-center gap-2">
@@ -128,7 +126,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
               >
                 <div className="hidden lg:flex flex-col text-right">
                   <span className="text-xs font-bold text-gray-900 dark:text-zinc-100">{user.name}</span>
-                  <span className="text-[9px] text-gray-500 dark:text-zinc-400">{roleLabel}</span>
+                  <span className="text-[9px] text-gray-500 dark:text-zinc-400">{roleLabel[user.role] || user.role}</span>
                 </div>
                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#714B67] to-[#5a3b52] flex items-center justify-center text-white text-xs font-bold shadow-sm">
                   {user.name?.charAt(0)?.toUpperCase() || 'U'}
@@ -147,7 +145,7 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                   </div>
                   
                   <button onClick={openEditModal} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded transition-colors">
-                    <User className="h-4 w-4 text-gray-500 dark:text-zinc-400" /> Edit Profile
+                    <User className="h-4 w-4 text-gray-500" /> Edit Profile
                   </button>
 
                   <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-gray-700 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded transition-colors">
@@ -189,8 +187,8 @@ export const Header: React.FC<HeaderProps> = ({ onLogout }) => {
                 <input type="text" value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full rounded border border-gray-300 dark:border-zinc-700 px-3 py-1.5 text-xs focus:border-[#714B67] focus:outline-none transition-all font-medium" placeholder="+91-XXXXXXXXXX" />
               </div>
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
-                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-3 py-1.5 border border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 rounded text-xs font-bold hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors">Cancel</button>
-                <button type="submit" className="px-4 py-1.5 bg-[#714B67] text-white rounded text-xs font-bold hover:bg-[#5e3b56] transition-colors flex items-center gap-1"><Check className="h-3.5 w-3.5" /> Save</button>
+                <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-3 py-1.5 border border-gray-300 dark:border-zinc-700 text-gray-600 dark:text-zinc-400 rounded text-xs font-bold hover:bg-gray-50 dark:hover:bg-zinc-800">Cancel</button>
+                <button type="submit" className="px-4 py-1.5 bg-[#714B67] text-white rounded text-xs font-bold hover:bg-[#5e3b56] flex items-center gap-1"><Check className="h-3.5 w-3.5" /> Save</button>
               </div>
             </form>
           </div>

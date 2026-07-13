@@ -76,36 +76,42 @@ export const Login: React.FC = () => {
 
     try {
       if (isLoginMode) {
-        // LOGIN
+        // ============ LOGIN ============
         const result = await dispatch(loginUser({ email: email.trim(), password })).unwrap();
-        console.log('Login success:', result);
         toast.success(`Welcome back, ${result.name || email}!`);
+        dispatch(setActiveTab('dashboard'));
+        
       } else {
-        // SIGNUP
+        // ============ SIGNUP ============
         const response = await api.post('/auth/signup', {
           email: email.trim(),
           password,
           name: name.trim(),
           role: BACKEND_ROLES[selectedRole],
         });
-        const { session } = response.data.data;
-        if (rememberMe) {
+
+        // Check if signup returned session directly
+        const session = response.data?.data?.session;
+        
+        if (session?.access_token) {
+          // Signup returned session - auto login
           localStorage.setItem('access_token', session.access_token);
           if (session.refresh_token) localStorage.setItem('refresh_token', session.refresh_token);
+          toast.success('Account created! Welcome aboard.');
+          dispatch(setActiveTab('dashboard'));
+        } else {
+          // Signup successful but no session - switch to login mode
+          toast.success('Account created! Please sign in with your credentials.');
+          setIsLoginMode(true);
+          setPassword('');
         }
-        toast.success('Account created successfully!');
       }
-      
-      // Navigate to dashboard
-      setTimeout(() => {
-        dispatch(setActiveTab('dashboard'));
-      }, 300);
       
     } catch (error: any) {
       console.error('Auth error:', error);
       const message = typeof error === 'string' 
         ? error 
-        : error?.response?.data?.message || error?.message || 'Authentication failed. Please check your credentials.';
+        : error?.response?.data?.message || error?.message || 'Authentication failed.';
       setFormError(message);
       toast.error(message);
     } finally {
