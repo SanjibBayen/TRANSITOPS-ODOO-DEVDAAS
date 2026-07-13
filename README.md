@@ -1,5 +1,6 @@
-# TransitOps - Smart Transport Operations Platform
 <div align="center">
+
+# TransitOps - Smart Transport Operations Platform
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-3178C6?style=flat-square&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
@@ -8,6 +9,7 @@
 ![Supabase](https://img.shields.io/badge/Supabase-Cloud-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)
 ![Redis](https://img.shields.io/badge/Redis-Cloud-DC382D?style=flat-square&logo=redis&logoColor=white)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-Storage-3448C5?style=flat-square&logo=cloudinary&logoColor=white)
 
 **Enterprise-Grade Fleet Management & Transport Operations Platform**
 
@@ -31,8 +33,7 @@
 - [Security](#-security)
 - [Deployment](#-deployment)
 - [Testing](#-testing)
-- [Contributing](#-contributing)
-- [License](#-license)
+
 
 ---
 
@@ -111,13 +112,58 @@
 - Trip dispatch & completion notifications
 - Real-time WebSocket push notifications
 
-### User Experience
-- **Odoo-inspired professional UI** with dark mode
-- Fully responsive design (mobile, tablet, desktop)
-- Skeleton loading states
-- Toast notifications for all actions
-- Empty states with guided actions
-- Advanced data tables with search & filters
+##  User Experience
+
+### Professional Interface
+- Clean, enterprise-grade design
+- Consistent typography with system fonts
+- Micro-interactions and smooth transitions
+- Breadcrumb navigation for deep pages
+- Collapsible sidebar with icon+text mode
+
+### Dark Mode
+- Full dark mode support across all pages
+- TailwindCSS `dark:` class implementation
+- System preference detection
+- Manual toggle in header
+- Persistent preference via localStorage
+- All charts, tables, and forms dark-mode compatible
+
+### Document Management
+- Upload vehicle documents (RC, Insurance, Permits, Pollution)
+- Cloudinary-powered secure file storage
+- Document verification workflow (Pending → Verified)
+- Expiry date tracking with visual alerts
+- Document preview and download
+- Bulk upload support
+- Safety Officer verification system
+
+### Responsive Design
+- Mobile-first approach
+- Optimized for 320px to 4K displays
+- Touch-friendly targets on mobile
+- Adaptive tables (horizontal scroll on mobile)
+- Collapsible sidebar on small screens
+- Bottom navigation bar for mobile
+
+### Loading & Feedback States
+- Skeleton loaders matching content layout
+- Toast notifications (Sonner) for all actions
+- Success, Error, Warning, Info variants
+- Loading spinners during API calls
+- Empty states with guided action buttons
+- Error boundaries with retry options
+- Optimistic UI updates for instant feedback
+
+### Advanced Data Tables
+- Search across all columns
+- Multi-column filtering
+- Status-based color coding
+- Sortable columns
+- Pagination controls
+- Row hover actions
+- Bulk selection support
+- Export to CSV/PDF
 
 ---
 
@@ -529,7 +575,7 @@ VITE_WS_URL=ws://localhost:5000
             └────┬─────┘
                  │
     ┌────────────┼────────────┐
-    │            │             │
+    │            │            │
 ┌───▼───┐  ┌────▼────┐  ┌────▼────┐
 │ fuel  │  │expenses │  │  maint  │
 │ logs  │  │         │  │ enance  │
@@ -594,17 +640,6 @@ npm run build
 # Serve dist/ folder with nginx or similar
 ```
 
-### Option 3: Cloud Platforms
-
-| Service | Platform |
-|---------|----------|
-| Frontend | Vercel, Netlify, AWS S3 + CloudFront |
-| Backend | Railway, Render, AWS EC2, DigitalOcean |
-| Database | Supabase Cloud (managed PostgreSQL) |
-| Cache | Redis Cloud (managed Redis) |
-| Storage | Cloudinary (managed file storage) |
-
----
 
 ## Testing
 
